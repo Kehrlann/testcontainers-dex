@@ -10,9 +10,10 @@ import org.testcontainers.images.builder.Transferable;
 
 // TODO:
 // - get client
-// - (test) get token
+//     - no client credentials grant
 // - get user
 // - (test) login
+// - (test) get token
 // - register users
 // - register clients
 // - use ephemeral ports in the issuer (pre-load script _inside_ the started container)
@@ -56,7 +57,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
                   - id: example-app
                     redirectURIs:
                       - 'http://127.0.0.1:5555/callback'
-                    name: 'Example App'
+                    name: example-app
                     secret: ZXhhbXBsZS1hcHAtc2VjcmV0
                 enablePasswordDB: true
                 staticPasswords:
@@ -64,8 +65,17 @@ public class DexContainer extends GenericContainer<DexContainer> {
                     hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
                     username: "admin"
                     userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+                oauth2:
+                    skipApprovalScreen: true
                 """.formatted(getIssuerUri(), DEX_PORT);
     }
+
+    public record Client(
+            String clientId,
+            String clientSecret
+    ) {
+    }
+
 
 
 }
