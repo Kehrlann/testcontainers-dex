@@ -3,7 +3,6 @@ package wf.garnier.testcontainers.dexidp;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
@@ -55,19 +54,19 @@ class DexContainerTest {
         try (var container = new DexContainer()) {
             container.start();
             var configuration = getConfiguration(container.getIssuerUri());
+            var client = container.getClient();
+            var user = container.getUser();
 
             var authorizationUri = new URIBuilder(configuration.authorizationEndpoint())
                     .appendPath("local") // this is for users logging through static passwords
                     .addParameter("response_type", "code")
-                    .addParameter("client_id", "example-app")
-                    .addParameter("scope", "openid email")
-                    .addParameter("redirect_uri", "http://127.0.0.1:5555/callback")
+                    .addParameter("client_id", client.clientId())
+                    .addParameter("scope", "openid email profile")
+                    .addParameter("redirect_uri", client.redirectUri())
                     .build();
-
             var request = HttpRequest.newBuilder(authorizationUri)
                     .GET()
                     .build();
-
             var loginRedirect = HttpClient.newHttpClient()
                     .send(request, BodyHandlers.discarding())
                     .headers()
@@ -75,14 +74,16 @@ class DexContainerTest {
                     .get();
 
             var loginUri = URI.create(container.getIssuerUri()).resolve(loginRedirect);
+            var loginBody = new URIBuilder("")
+                    .addParameter("login", user.email())
+                    .addParameter("password", user.clearTextPassword())
+                    .build()
+                    .getRawQuery();
             var loginRequest = HttpRequest.newBuilder(loginUri)
                     .header("content-type", "application/x-www-form-urlencoded")
-                    .POST(
-                            HttpRequest.BodyPublishers.ofString(
-                                    "login=%s&password=%s".formatted(URLEncoder.encode("admin@example.com", StandardCharsets.UTF_8), "password")
-                            )
-                    )
+                    .POST(HttpRequest.BodyPublishers.ofString(loginBody))
                     .build();
+
             var redirectUriWithCode = HttpClient.newHttpClient()
                     .send(loginRequest, BodyHandlers.discarding())
                     .headers()
@@ -95,22 +96,22 @@ class DexContainerTest {
                     .get()
                     .getValue();
 
-            var body = new URIBuilder("")
+            var tokenRequestBody = new URIBuilder("")
                     .addParameter("code", code)
-                    .addParameter("redirect_uri", "http://127.0.0.1:5555/callback")
+                    .addParameter("redirect_uri", client.redirectUri())
                     .addParameter("grant_type", "authorization_code")
                     .build()
                     .getRawQuery();
-            var stringCreds = "example-app" + ":" + "ZXhhbXBsZS1hcHAtc2VjcmV0";
-            var creds = Base64.getUrlEncoder().encodeToString(stringCreds.getBytes());
+            var httpBasicCredentials = Base64.getUrlEncoder().encodeToString((client.clientId() + ":" + client.clientSecret()).getBytes());
             var tokenRequest = HttpRequest.newBuilder(URI.create(configuration.tokenEndpoint()))
                     .header("content-type", "application/x-www-form-urlencoded")
-                    .header("authorization", "Basic " + creds)
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .header("authorization", "Basic " + httpBasicCredentials)
+                    .POST(HttpRequest.BodyPublishers.ofString(tokenRequestBody))
                     .build();
             var tokenResponse = HttpClient.newHttpClient()
                     .send(tokenRequest, BodyHandlers.ofString())
                     .body();
+
             var parsedResponse = objectMapper.readValue(tokenResponse, TokenResponse.class);
             assertThat(parsedResponse.idToken()).isNotBlank();
         }

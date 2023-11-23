@@ -11,6 +11,7 @@ repositories {
 
 dependencies {
     implementation('org.testcontainers:testcontainers:1.19.1')
+    implementation('jakarta.validation:jakarta.validation-api:3.0.2')
 
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
