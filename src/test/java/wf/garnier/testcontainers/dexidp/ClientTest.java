@@ -56,13 +56,16 @@ class ClientTest {
     void mustHaveClientId() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new DexContainer.Client(null, "client-secret", List.of("https://example.com")));
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DexContainer.Client("", "client-secret", List.of("https://example.com")));
     }
 
     @Test
     void mustHaveClientSecret() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new DexContainer.Client("client-id", null, List.of("http://example.com")));
-
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DexContainer.Client("client-id", "", List.of("http://example.com")));
     }
 }
 

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.testcontainers.containers.GenericContainer;
@@ -26,6 +27,13 @@ import org.testcontainers.images.builder.Transferable;
 // - RELEASE!
 // - samples
 
+/**
+ * Represents a container running the Dex OpenID Connect Provider. It provides a lightweight,
+ * OpenID-compliant identity provider for all your integration tests that deal with {@code id_token}
+ * flows.
+ *
+ * @see <a href="https://dexidp.io">DexIDP.io</a>
+ */
 public class DexContainer extends GenericContainer<DexContainer> {
 
     private final int DEX_PORT = 5556;
@@ -47,6 +55,13 @@ public class DexContainer extends GenericContainer<DexContainer> {
         this.withCopyToContainer(Transferable.of(configuration()), "/etc/dex/dex.yml");
     }
 
+    /**
+     * Return the OpenID Connect Provider's {@code issuer identifier}. It will match whatever is in
+     * the OpenID Configuration Document.
+     *
+     * @return the issuer URI, in String format.
+     * @see <a href="https://openid.net/specs/openid-connect-core-1_0.html#Terminology">OpenID Connect Core - Terminology</a>
+     */
     public String getIssuerUri() {
         return "http://%s:%s/dex".formatted(getHost(), DEX_PORT);
     }
@@ -111,12 +126,14 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-2">RFC 6749 - 2.  Client Registration</a>
      */
     public record Client(
-            @NotNull String clientId,
-            @NotNull String clientSecret,
+            @NotNull @NotBlank String clientId,
+            @NotNull @NotBlank String clientSecret,
             @NotNull @NotEmpty List<String> redirectUris
     ) {
 
         public Client {
+            Validation.assertNotBlank(clientId, "clientId");
+            Validation.assertNotBlank(clientSecret, "clientSecret");
             if (redirectUris == null) {
                 throw new IllegalArgumentException("redirectUris must not be null");
             }
@@ -126,17 +143,11 @@ public class DexContainer extends GenericContainer<DexContainer> {
             if (redirectUris.stream().anyMatch(Objects::isNull)) {
                 throw new IllegalArgumentException("items in redirectUris must not be null");
             }
-            if (clientId == null) {
-                throw new IllegalArgumentException("clientId must not be null");
-            }
-            if (clientSecret == null) {
-                throw new IllegalArgumentException("clientSecret must not be null");
-            }
         }
 
         public Client(
-                @NotNull String clientId,
-                @NotNull String clientSecret,
+                @NotNull @NotBlank String clientId,
+                @NotNull @NotBlank String clientSecret,
                 @NotNull String redirectUri
         ) {
             this(clientId, clientSecret, Collections.singletonList(redirectUri));
@@ -147,6 +158,11 @@ public class DexContainer extends GenericContainer<DexContainer> {
         }
     }
 
+    /**
+     * Represents a "User" that may log in with an e-mail and a password. Internally, the
+     * password is bcrypt-hashed. The {@link #username()} is used for the {@code name} claim
+     * in Dex-issued {@code id_token}s.
+     */
     public static final class User {
         private final String username;
         private final String email;
@@ -155,10 +171,13 @@ public class DexContainer extends GenericContainer<DexContainer> {
         private final String uuid;
 
         public User(
-                String username,
-                String email,
-                String clearTextPassword
+                @NotNull @NotBlank String username,
+                @NotNull @NotBlank String email,
+                @NotNull @NotBlank String clearTextPassword
         ) {
+            Validation.assertNotBlank(username, "username");
+            Validation.assertNotBlank(email, "email");
+            Validation.assertNotBlank(clearTextPassword, "clearTextPassword");
             this.username = username;
             this.email = email;
             this.clearTextPassword = clearTextPassword;
@@ -175,7 +194,6 @@ public class DexContainer extends GenericContainer<DexContainer> {
         }
 
         private String uuid() {
-            // TODO: what about a "sub" claim?
             return uuid;
         }
 
