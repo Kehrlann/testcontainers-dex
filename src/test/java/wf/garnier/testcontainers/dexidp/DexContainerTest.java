@@ -59,6 +59,11 @@ class DexContainerTest {
                     .containsEntry("aud", client.clientId())
                     .containsEntry("name", user.username())
                     .containsEntry("email", user.email());
+            // The access token contains email, name, etc; but those are not
+            // strictly part of the OAuth2 or JWT spec, so we don't test against this.
+            assertThat(token.accessTokenClaims())
+                    .containsEntry("iss", container.getIssuerUri())
+                    .containsEntry("aud", client.clientId());
         }
     }
 
@@ -83,10 +88,12 @@ class DexContainerTest {
                         .containsExactly(first, second);
                 assertThat(container.getClient()).isEqualTo(first);
 
-                var firstIdToken = obtainToken(configuration, first, user).idTokenClaims();
-                var secondIdToken = obtainToken(configuration, second, user).idTokenClaims();
-                assertThat(firstIdToken.get("aud")).isEqualTo("client-1");
-                assertThat(secondIdToken.get("aud")).isEqualTo("client-2");
+                var responseFirst = obtainToken(configuration, first, user);
+                assertThat(responseFirst.idTokenClaims().get("aud")).isEqualTo("client-1");
+                assertThat(responseFirst.accessTokenClaims().get("aud")).isEqualTo("client-1");
+                var responseSecond = obtainToken(configuration, second, user);
+                assertThat(responseSecond.idTokenClaims().get("aud")).isEqualTo("client-2");
+                assertThat(responseSecond.accessTokenClaims().get("aud")).isEqualTo("client-2");
             }
         }
 
