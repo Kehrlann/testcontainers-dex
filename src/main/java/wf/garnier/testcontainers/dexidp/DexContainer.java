@@ -99,8 +99,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
                 oauth2:
                     skipApprovalScreen: true
                 """.formatted(getIssuerUri(), DEX_PORT);
-        var userConfiguration = getUserConfiguration();
-        return baseConfiguration + userConfiguration + getClientConfiguration();
+        return baseConfiguration + getUserConfiguration() + getClientConfiguration();
     }
 
     private String getUserConfiguration() {
@@ -112,7 +111,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
                           hash: %s
                         """.formatted(u.username(), u.email(), u.uuid(), u.bcryptPassword())
                 )
-                .collect(Collectors.joining("\n"))
+                .collect(Collectors.joining())
                 .indent(2);
         return """
                 staticPasswords:
@@ -122,17 +121,17 @@ public class DexContainer extends GenericContainer<DexContainer> {
     }
 
     private String getClientConfiguration() {
-        // TODO: cleanup with YAML helpers
         var clients = getClients().stream()
                 .map(c -> """
                         - id: %s
                           name: %s
                           secret: %s
                           redirectURIs:
-                            - %s"""
+                            - %s
+                        """
                         .formatted(c.clientId(), c.clientId(), c.clientSecret(), c.redirectUri()))
                 .map(c -> c.indent(2))
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.joining());
         return """
                 staticClients:
                 %s
