@@ -38,16 +38,8 @@ class DexContainerTest {
     void servesOpenidConfiguration() throws IOException, InterruptedException {
         try (var container = new DexContainer()) {
             container.start();
-            var issuerUri = container.getIssuerUri();
-            var openidConfigurationUri = URI.create(issuerUri + "/.well-known/openid-configuration");
-            var request = HttpRequest.newBuilder(openidConfigurationUri)
-                    .GET()
-                    .build();
-            var httpResponse = HttpClient.newHttpClient()
-                    .send(request, BodyHandlers.ofString())
-                    .body();
-            var configuration = objectMapper.readValue(httpResponse, OpenidConfigurationResponse.class);
-            assertThat(configuration.issuer()).isEqualTo(issuerUri);
+            var configuration = getConfiguration(container.getIssuerUri());
+            assertThat(configuration.issuer()).isEqualTo(container.getIssuerUri());
         }
     }
 
