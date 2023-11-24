@@ -2,25 +2,21 @@ package wf.garnier.testcontainers.dexidp;
 
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 
 // TODO:
-// - get client
-//     - no client credentials grant
-// - register users
-// - register clients
 // - get openid configuration data
-// - (test) contents of the id_token
 // - (test) userinfo endpoint
 // - document all the things!
 // - use ephemeral ports in the issuer (pre-load script _inside_ the started container)
@@ -31,12 +27,21 @@ import org.testcontainers.images.builder.Transferable;
  * Represents a container running the Dex OpenID Connect Provider. It provides a lightweight,
  * OpenID-compliant identity provider for all your integration tests that deal with {@code id_token}
  * flows.
+ * <p></p>
+ * Clients and users should not be added after the container is started.
+ * There is a check in place, but it's not thread-safe.
  *
  * @see <a href="https://dexidp.io">DexIDP.io</a>
  */
 public class DexContainer extends GenericContainer<DexContainer> {
 
     private final int DEX_PORT = 5556;
+
+    private List<Client> clients = new ArrayList<>();
+
+    private List<User> users = new ArrayList<>();
+
+    private boolean isConfigured = false;
 
     public DexContainer() {
         super("dexidp/dex:v2.37.0");
@@ -52,6 +57,21 @@ public class DexContainer extends GenericContainer<DexContainer> {
                 "serve",
                 "/etc/dex/dex.yml"
         );
+    }
+
+    @Override
+    protected void configure() {
+        this.isConfigured = true;
+        if (clients.isEmpty()) {
+            clients = Collections.singletonList(new Client("example-app", "ZXhhbXBsZS1hcHAtc2VjcmV0", "http://127.0.0.1:5555/callback"));
+        } else {
+            clients = Collections.unmodifiableList(clients);
+        }
+        if (users.isEmpty()) {
+            users = Collections.singletonList(new User("admin", "admin@example.com", "password"));
+        } else {
+            users = Collections.unmodifiableList(users);
+        }
         this.withCopyToContainer(Transferable.of(configuration()), "/etc/dex/dex.yml");
     }
 
@@ -79,42 +99,89 @@ public class DexContainer extends GenericContainer<DexContainer> {
                 oauth2:
                     skipApprovalScreen: true
                 """.formatted(getIssuerUri(), DEX_PORT);
-        var userConfiguration = """
+        var userConfiguration = getUserConfiguration();
+        return baseConfiguration + userConfiguration + getClientConfiguration();
+    }
+
+    private String getUserConfiguration() {
+        var users = getUsers().stream()
+                .map(u -> """
+                        - username: %s
+                          email: %s
+                          userID: %s
+                          hash: %s
+                        """.formatted(u.username(), u.email(), u.uuid(), u.bcryptPassword())
+                )
+                .collect(Collectors.joining("\n"))
+                .indent(2);
+        return """
                 staticPasswords:
-                  - username: %s
-                    email: %s
-                    userID: %s
-                    hash: %s
+                %s
                 """
-                .formatted(
-                        getUser().username(),
-                        getUser().email(),
-                        getUser().uuid(),
-                        getUser().bcryptPassword()
-                );
-        var clientConfiguration = """
+                .formatted(users);
+    }
+
+    private String getClientConfiguration() {
+        // TODO: cleanup with YAML helpers
+        var clients = getClients().stream()
+                .map(c -> """
+                        - id: %s
+                          name: %s
+                          secret: %s
+                          redirectURIs:
+                            - %s"""
+                        .formatted(c.clientId(), c.clientId(), c.clientSecret(), c.redirectUri()))
+                .map(c -> c.indent(2))
+                .collect(Collectors.joining("\n"));
+        return """
                 staticClients:
-                  - id: %s
-                    name: %s
-                    secret: %s
-                    redirectURIs:
-                      - %s
+                %s
                 """
-                .formatted(
-                        getClient().clientId(),
-                        getClient().clientId(),
-                        getClient().clientSecret(),
-                        getClient().redirectUri()
-                );
-        return baseConfiguration + userConfiguration + clientConfiguration;
+                .formatted(clients);
+    }
+
+    public DexContainer withClient(Client client) {
+        if (isConfigured) {
+            throw new IllegalStateException("clients cannot be added after the container is started");
+        }
+        clients.add(client);
+        return self();
     }
 
     public Client getClient() {
-        return new DexContainer.Client("example-app", "ZXhhbXBsZS1hcHAtc2VjcmV0", "http://127.0.0.1:5555/callback");
+        if (!isConfigured) {
+            throw new IllegalStateException("must start the container before accessing the clients");
+        }
+        return clients.get(0);
+    }
+
+    public List<Client> getClients() {
+        if (!isConfigured) {
+            throw new IllegalStateException("must start the container before accessing the clients");
+        }
+        return clients;
+    }
+
+    public DexContainer withUser(User user) {
+        if (isConfigured) {
+            throw new IllegalStateException("users cannot be added after the container is started");
+        }
+        users.add(user);
+        return self();
     }
 
     public User getUser() {
-        return new DexContainer.User("admin", "admin@example.com", "password");
+        if (!isConfigured) {
+            throw new IllegalStateException("must start the container before accessing the users");
+        }
+        return users.get(0);
+    }
+
+    public List<User> getUsers() {
+        if (!isConfigured) {
+            throw new IllegalStateException("must start the container before accessing the users");
+        }
+        return users;
     }
 
     /**
@@ -122,39 +189,19 @@ public class DexContainer extends GenericContainer<DexContainer> {
      *
      * @param clientId     - the client_id
      * @param clientSecret - the client_secret
-     * @param redirectUris - a not-empty List of non-null redirect_uris.
+     * @param redirectUri  - the redirectUri
      * @see <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-2">RFC 6749 - 2.  Client Registration</a>
      */
     public record Client(
             @NotNull @NotBlank String clientId,
             @NotNull @NotBlank String clientSecret,
-            @NotNull @NotEmpty List<String> redirectUris
+            @NotNull @NotBlank String redirectUri
     ) {
 
         public Client {
             Validation.assertNotBlank(clientId, "clientId");
             Validation.assertNotBlank(clientSecret, "clientSecret");
-            if (redirectUris == null) {
-                throw new IllegalArgumentException("redirectUris must not be null");
-            }
-            if (redirectUris.isEmpty()) {
-                throw new IllegalArgumentException("redirectUris must not be empty");
-            }
-            if (redirectUris.stream().anyMatch(Objects::isNull)) {
-                throw new IllegalArgumentException("items in redirectUris must not be null");
-            }
-        }
-
-        public Client(
-                @NotNull @NotBlank String clientId,
-                @NotNull @NotBlank String clientSecret,
-                @NotNull String redirectUri
-        ) {
-            this(clientId, clientSecret, Collections.singletonList(redirectUri));
-        }
-
-        public String redirectUri() {
-            return redirectUris.get(0);
+            Validation.assertNotBlank(redirectUri, "redirectUri");
         }
     }
 

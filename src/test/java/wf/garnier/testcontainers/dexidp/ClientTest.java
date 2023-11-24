@@ -1,8 +1,5 @@
 package wf.garnier.testcontainers.dexidp;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,16 +12,12 @@ class ClientTest {
         var client = new DexContainer.Client(
                 "client-id",
                 "client-secret",
-                List.of(
-                        "https://one.example.com/callback",
-                        "https://two.example.com/callback"
-                )
+                "https://example.com/callback"
         );
 
         assertThat(client.clientId()).isEqualTo("client-id");
         assertThat(client.clientSecret()).isEqualTo("client-secret");
-        assertThat(client.redirectUris()).containsExactly("https://one.example.com/callback", "https://two.example.com/callback");
-        assertThat(client.redirectUri()).isEqualTo("https://one.example.com/callback");
+        assertThat(client.redirectUri()).isEqualTo("https://example.com/callback");
     }
 
     @Test
@@ -37,7 +30,6 @@ class ClientTest {
 
         assertThat(client.clientId()).isEqualTo("client-id");
         assertThat(client.clientSecret()).isEqualTo("client-secret");
-        assertThat(client.redirectUris()).containsExactly("https://one.example.com/callback");
         assertThat(client.redirectUri()).isEqualTo("https://one.example.com/callback");
     }
 
@@ -45,27 +37,25 @@ class ClientTest {
     @Test
     void mustHaveRedirectUri() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client("client-id", "client-secret", Collections.emptyList()));
+                .isThrownBy(() -> new DexContainer.Client("client-id", "client-secret", null));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client("client-id", "client-secret", (String) null));
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client("client-id", "client-secret", (List<String>) null));
+                .isThrownBy(() -> new DexContainer.Client("client-id", "client-secret", ""));
     }
 
     @Test
     void mustHaveClientId() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client(null, "client-secret", List.of("https://example.com")));
+                .isThrownBy(() -> new DexContainer.Client(null, "client-secret", "https://valid.example.com"));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client("", "client-secret", List.of("https://example.com")));
+                .isThrownBy(() -> new DexContainer.Client("", "client-secret", "https://valid.example.com"));
     }
 
     @Test
     void mustHaveClientSecret() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client("client-id", null, List.of("http://example.com")));
+                .isThrownBy(() -> new DexContainer.Client("client-id", null, "http://valid.example.com"));
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new DexContainer.Client("client-id", "", List.of("http://example.com")));
+                .isThrownBy(() -> new DexContainer.Client("client-id", "", "http://valid.example.com"));
     }
 }
 
