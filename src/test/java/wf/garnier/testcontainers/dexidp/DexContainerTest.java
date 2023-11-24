@@ -21,8 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DexContainerTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void boots() {
@@ -57,62 +56,7 @@ class DexContainerTest {
             var client = container.getClient();
             var user = container.getUser();
 
-            var authorizationUri = new URIBuilder(configuration.authorizationEndpoint())
-                    .appendPath("local") // this is for users logging through static passwords
-                    .addParameter("response_type", "code")
-                    .addParameter("client_id", client.clientId())
-                    .addParameter("scope", "openid email profile")
-                    .addParameter("redirect_uri", client.redirectUri())
-                    .build();
-            var request = HttpRequest.newBuilder(authorizationUri)
-                    .GET()
-                    .build();
-            var loginRedirect = HttpClient.newHttpClient()
-                    .send(request, BodyHandlers.discarding())
-                    .headers()
-                    .firstValue("location")
-                    .get();
-
-            var loginUri = URI.create(container.getIssuerUri()).resolve(loginRedirect);
-            var loginBody = new URIBuilder("")
-                    .addParameter("login", user.email())
-                    .addParameter("password", user.clearTextPassword())
-                    .build()
-                    .getRawQuery();
-            var loginRequest = HttpRequest.newBuilder(loginUri)
-                    .header("content-type", "application/x-www-form-urlencoded")
-                    .POST(HttpRequest.BodyPublishers.ofString(loginBody))
-                    .build();
-
-            var redirectUriWithCode = HttpClient.newHttpClient()
-                    .send(loginRequest, BodyHandlers.discarding())
-                    .headers()
-                    .firstValue("location")
-                    .get();
-            var code = URLEncodedUtils.parse(URI.create(redirectUriWithCode), StandardCharsets.UTF_8)
-                    .stream()
-                    .filter(nvp -> nvp.getName().equals("code"))
-                    .findFirst()
-                    .get()
-                    .getValue();
-
-            var tokenRequestBody = new URIBuilder("")
-                    .addParameter("code", code)
-                    .addParameter("redirect_uri", client.redirectUri())
-                    .addParameter("grant_type", "authorization_code")
-                    .build()
-                    .getRawQuery();
-            var httpBasicCredentials = Base64.getUrlEncoder().encodeToString((client.clientId() + ":" + client.clientSecret()).getBytes());
-            var tokenRequest = HttpRequest.newBuilder(URI.create(configuration.tokenEndpoint()))
-                    .header("content-type", "application/x-www-form-urlencoded")
-                    .header("authorization", "Basic " + httpBasicCredentials)
-                    .POST(HttpRequest.BodyPublishers.ofString(tokenRequestBody))
-                    .build();
-            var tokenResponse = HttpClient.newHttpClient()
-                    .send(tokenRequest, BodyHandlers.ofString())
-                    .body();
-
-            var parsedResponse = objectMapper.readValue(tokenResponse, TokenResponse.class);
+            var parsedResponse = obtainToken(configuration, client, user);
             assertThat(parsedResponse.idToken()).isNotBlank();
         }
     }
@@ -127,6 +71,74 @@ class DexContainerTest {
                 .body();
         return objectMapper.readValue(httpResponse, OpenidConfigurationResponse.class);
     }
+
+    /**
+     * Perform a full OpenID Connect {@code authorization_code} flow to obtain tokens.
+     *
+     * @param configuration the configuration data for the Dex container
+     * @param client        the OIDC Client to use to make token requests
+     * @param user          the User to use to log in
+     * @return the full token response
+     */
+    private static TokenResponse obtainToken(OpenidConfigurationResponse configuration, DexContainer.Client client, DexContainer.User user) throws URISyntaxException, IOException, InterruptedException {
+        var authorizationUri = new URIBuilder(configuration.authorizationEndpoint())
+                .appendPath("local") // this is for users logging through static passwords
+                .addParameter("response_type", "code")
+                .addParameter("client_id", client.clientId())
+                .addParameter("scope", "openid email profile")
+                .addParameter("redirect_uri", client.redirectUri())
+                .build();
+        var request = HttpRequest.newBuilder(authorizationUri)
+                .GET()
+                .build();
+        var loginRedirect = HttpClient.newHttpClient()
+                .send(request, BodyHandlers.discarding())
+                .headers()
+                .firstValue("location")
+                .get();
+
+        var loginUri = URI.create(configuration.issuer()).resolve(loginRedirect);
+        var loginBody = new URIBuilder("")
+                .addParameter("login", user.email())
+                .addParameter("password", user.clearTextPassword())
+                .build()
+                .getRawQuery();
+        var loginRequest = HttpRequest.newBuilder(loginUri)
+                .header("content-type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(loginBody))
+                .build();
+
+        var redirectUriWithCode = HttpClient.newHttpClient()
+                .send(loginRequest, BodyHandlers.discarding())
+                .headers()
+                .firstValue("location")
+                .get();
+        var code = URLEncodedUtils.parse(URI.create(redirectUriWithCode), StandardCharsets.UTF_8)
+                .stream()
+                .filter(nvp -> nvp.getName().equals("code"))
+                .findFirst()
+                .get()
+                .getValue();
+
+        var tokenRequestBody = new URIBuilder("")
+                .addParameter("code", code)
+                .addParameter("redirect_uri", client.redirectUri())
+                .addParameter("grant_type", "authorization_code")
+                .build()
+                .getRawQuery();
+        var httpBasicCredentials = Base64.getUrlEncoder().encodeToString((client.clientId() + ":" + client.clientSecret()).getBytes());
+        var tokenRequest = HttpRequest.newBuilder(URI.create(configuration.tokenEndpoint()))
+                .header("content-type", "application/x-www-form-urlencoded")
+                .header("authorization", "Basic " + httpBasicCredentials)
+                .POST(HttpRequest.BodyPublishers.ofString(tokenRequestBody))
+                .build();
+        var tokenResponse = HttpClient.newHttpClient()
+                .send(tokenRequest, BodyHandlers.ofString())
+                .body();
+
+        return objectMapper.readValue(tokenResponse, TokenResponse.class);
+    }
+
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     @JsonIgnoreProperties(ignoreUnknown = true)
