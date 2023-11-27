@@ -27,7 +27,7 @@ import org.testcontainers.images.builder.Transferable;
  * Represents a container running the Dex OpenID Connect Provider. It provides a lightweight,
  * OpenID-compliant identity provider for all your integration tests that deal with {@code id_token}
  * flows.
- * <p></p>
+ * <p>
  * Clients and users should not be added after the container is started.
  * There is a check in place, but it's not thread-safe.
  *
@@ -43,6 +43,9 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     private boolean isConfigured = false;
 
+    /**
+     * Constructs a GenericContainer running Dex {@code v2.37.0}.
+     */
     public DexContainer() {
         super("dexidp/dex:v2.37.0");
         // Must be 1-1 mapping because the issuer-uri must match
@@ -139,6 +142,15 @@ public class DexContainer extends GenericContainer<DexContainer> {
                 .formatted(clients);
     }
 
+    /**
+     * Add an OAuth2 Client capable of interacting with the OpenID provider.
+     * <p>
+     * This is optional. When not called, a default client is provided.
+     *
+     * @param client the client to add
+     * @return this instance for further configuration
+     * @see #getClients()
+     */
     public DexContainer withClient(Client client) {
         if (isConfigured) {
             throw new IllegalStateException("clients cannot be added after the container is started");
@@ -147,13 +159,29 @@ public class DexContainer extends GenericContainer<DexContainer> {
         return self();
     }
 
+    /**
+     * Get an OAuth2 Client to interact with the OpenID Provider. When there are multiple clients,
+     * only return the first client. When the user has defined no client, return a default client.
+     * <p>
+     * This method MUST NOT be called before the container is started.
+     *
+     * @return the client
+     * @throws IllegalStateException when called before the container is started
+     * @see #getClients()
+     */
     public Client getClient() {
-        if (!isConfigured) {
-            throw new IllegalStateException("must start the container before accessing the clients");
-        }
-        return clients.get(0);
+        return getClients().get(0);
     }
 
+    /**
+     * Get the list of all defined OAuth2 Clients to interact with the OpenID Provider. When the user has
+     * defined no client, returns a single default client.
+     * <p>
+     * This method MUST NOT be called before the container is started.
+     *
+     * @return the clients
+     * @throws IllegalStateException when called before the container is started
+     */
     public List<Client> getClients() {
         if (!isConfigured) {
             throw new IllegalStateException("must start the container before accessing the clients");
@@ -161,6 +189,18 @@ public class DexContainer extends GenericContainer<DexContainer> {
         return clients;
     }
 
+    /**
+     * Add a User that can log in with the OpenID Provider.
+     * <p>
+     * This MUST NOT be called after the container is started.
+     * <p>
+     * This is optional. When not called, a default user is provided.
+     *
+     * @param user the user
+     * @return this instance for further customization
+     * @throws IllegalStateException when called after the container is started
+     * @see #getUsers()
+     */
     public DexContainer withUser(User user) {
         if (isConfigured) {
             throw new IllegalStateException("users cannot be added after the container is started");
@@ -169,13 +209,29 @@ public class DexContainer extends GenericContainer<DexContainer> {
         return self();
     }
 
+    /**
+     * Return a User that can log in with the OpenID provider. When multiple users are defined,
+     * returns the first one. When no user is defined, returns a default user.
+     * <p>
+     * This method MUST NOT be called before the container is started.
+     *
+     * @return the user
+     * @throws IllegalStateException when called before the container is started
+     */
     public User getUser() {
-        if (!isConfigured) {
-            throw new IllegalStateException("must start the container before accessing the users");
-        }
-        return users.get(0);
+        return getUsers().get(0);
     }
 
+
+    /**
+     * Return the list of Users that can log in with the OpenID provider. When no user is defined,
+     * returns a default user.
+     * <p>
+     * This method MUST NOT be called before the container is started.
+     *
+     * @return the users
+     * @throws IllegalStateException when called before the container is started
+     */
     public List<User> getUsers() {
         if (!isConfigured) {
             throw new IllegalStateException("must start the container before accessing the users");
@@ -185,11 +241,6 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     /**
      * Represents an OAuth 2 / OpenID Connect Client.
-     *
-     * @param clientId     - the client_id
-     * @param clientSecret - the client_secret
-     * @param redirectUri  - the redirectUri
-     * @see <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-2">RFC 6749 - 2.  Client Registration</a>
      */
     public record Client(
             @NotNull @NotBlank String clientId,
@@ -197,6 +248,14 @@ public class DexContainer extends GenericContainer<DexContainer> {
             @NotNull @NotBlank String redirectUri
     ) {
 
+        /**
+         * Construct a new OAuth 2 / OpenID Connect Client.
+         *
+         * @param clientId     - the client_id, not null, not blank
+         * @param clientSecret - the client_secret, not null, not blank
+         * @param redirectUri  - the redirectUri, not null, not blank
+         * @see <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-2">RFC 6749 - 2.  Client Registration</a>
+         */
         public Client {
             Validation.assertNotBlank(clientId, "clientId");
             Validation.assertNotBlank(clientSecret, "clientSecret");
@@ -216,6 +275,13 @@ public class DexContainer extends GenericContainer<DexContainer> {
         private final String bcryptPassword;
         private final String uuid;
 
+        /**
+         * Construct a new User that can log in with username and password.
+         *
+         * @param username          the login username, not null, not blank
+         * @param email             the email, used in the id_token, not null, not blank
+         * @param clearTextPassword the password used to log in, not null, not blank
+         */
         public User(
                 @NotNull @NotBlank String username,
                 @NotNull @NotBlank String email,
@@ -231,24 +297,45 @@ public class DexContainer extends GenericContainer<DexContainer> {
             this.uuid = UUID.randomUUID().toString();
         }
 
+        /**
+         * Get the user's log in username.
+         *
+         * @return the username
+         */
         public String username() {
             return username;
         }
 
+        /**
+         * Get the user's email.
+         *
+         * @return the email
+         */
         public String email() {
             return email;
         }
 
-        private String uuid() {
-            return uuid;
-        }
-
+        /**
+         * Get the user's password, in clear-text, to log in.
+         *
+         * @return the password, in clear text
+         */
         public String clearTextPassword() {
             return clearTextPassword;
         }
 
+        /**
+         * Get the user's password, bcrypt-hashed. Used by Dex's configuration file.
+         *
+         * @return the bcrypt hash of the {@link #clearTextPassword()}
+         */
         public String bcryptPassword() {
             return bcryptPassword;
+        }
+
+
+        private String uuid() {
+            return uuid;
         }
 
         @Override
