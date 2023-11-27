@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'wf.garnier.testcontainers.dexdip'
+group = 'wf.garnier'
 version = '0.0.1-SNAPSHOT'
 
 repositories {
