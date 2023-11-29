@@ -15,13 +15,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 
-// TODO:
-// - get openid configuration data
-// - (test) userinfo endpoint
-// - document all the things!
-// - use ephemeral ports in the issuer (pre-load script _inside_ the started container)
-// - RELEASE!
-// - samples
+
 
 /**
  * Represents a container running the Dex OpenID Connect Provider. It provides a lightweight,
