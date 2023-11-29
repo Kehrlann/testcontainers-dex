@@ -1,0 +1,15 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          dex:
+            client-id: base-client
+            client-secret: base-secret
+            scope:
+              - openid
+              - email
+              - profile
+        provider:
+          dex:
+            issuer-uri: http://localhost:5556
