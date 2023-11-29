@@ -1,6 +1,7 @@
 plugins {
     id("java-library")
     id("maven-publish")
+    id("signing")
 }
 
 group = "wf.garnier"
@@ -28,4 +29,41 @@ java {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            pom {
+                name = "Testcontainers - Dex"
+                description = "A Testcontainers Module for the Dex OpenID Provider"
+                url = "https://github.com/Kehrlann/testcontainers-dex"
+                artifactId = "testcontainers-dex"
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+                developers {
+                    developer {
+                        id = "kehrlann"
+                        name = "Daniel Garnier-Moiroux"
+                        email = "git@garnier.wf"
+                    }
+                }
+                scm {
+                    connection = "https://github.com/Kehrlann/testcontainers-dex.git"
+                    url = "https://github.com/Kehrlann/testcontainers-dex"
+                }
+            }
+        }
+    }
+}
+
+signing {
+    // Run: export GPG_TTY=$(tty)
+    useGpgCmd()
+    sign(publishing.publications["mavenJava"])
 }
