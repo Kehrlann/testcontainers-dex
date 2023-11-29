@@ -17,7 +17,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
-    testImplementation("org.apache.httpcomponents.client5:httpclient5-fluent:5.2.1")
+    testImplementation("org.apache.httpcomponents.core5:httpcore5:5.2.1")
 }
 
 java {

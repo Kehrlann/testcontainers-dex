@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.net.URLEncodedUtils;
+import org.apache.hc.core5.net.URLEncodedUtils;
 import org.apache.hc.core5.net.URIBuilder;
 import wf.garnier.testcontainers.dexidp.DexContainer;
 
