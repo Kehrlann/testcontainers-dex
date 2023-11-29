@@ -64,6 +64,7 @@ publishing {
 
 signing {
     // Run: export GPG_TTY=$(tty)
+    // Run: ./gradlew publishToMavenLocal --console plain
     useGpgCmd()
     sign(publishing.publications["mavenJava"])
 }
