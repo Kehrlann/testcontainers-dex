@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AutoLifecycleTest {
 
     @Container
-    static DexContainer container = new DexContainer(5557)
+    static DexContainer container = new DexContainer()
             .withClient(new DexContainer.Client("some-client", "some-secret", "http://localhost:1234/login/oauth2/code/dex"));
 
     // Y U NO AUTOWIRE ?!

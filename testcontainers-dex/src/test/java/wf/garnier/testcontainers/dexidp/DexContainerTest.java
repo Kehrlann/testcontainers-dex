@@ -16,7 +16,7 @@ public class DexContainerTest {
 
     @Test
     void boots() {
-        try (var container = new DexContainer(TEST_PORT)) {
+        try (var container = new DexContainer()) {
             container.start();
             assertThat(container.isRunning()).isTrue();
         }
@@ -24,7 +24,7 @@ public class DexContainerTest {
 
     @Test
     void servesOpenidConfiguration() throws IOException, InterruptedException {
-        try (var container = new DexContainer(TEST_PORT)) {
+        try (var container = new DexContainer()) {
             container.start();
             var configuration = Oidc.getConfiguration(container.getIssuerUri());
             assertThat(configuration.issuer()).isEqualTo(container.getIssuerUri());
@@ -33,7 +33,7 @@ public class DexContainerTest {
 
     @Test
     void issuesToken() throws IOException, InterruptedException, URISyntaxException {
-        try (var container = new DexContainer(TEST_PORT)) {
+        try (var container = new DexContainer()) {
             container.start();
             var configuration = Oidc.getConfiguration(container.getIssuerUri());
             var client = container.getClient();
@@ -62,7 +62,7 @@ public class DexContainerTest {
             var first = new DexContainer.Client("client-1", "client-1-secret", "https://example.com/authorized");
             var second = new DexContainer.Client("client-2", "client-2-secret", "https://example.com/authorized");
 
-            try (var container = new DexContainer(TEST_PORT)) {
+            try (var container = new DexContainer()) {
                 container
                         .withClient(first)
                         .withClient(second)
@@ -89,7 +89,7 @@ public class DexContainerTest {
         void mustRegisterClientsBeforeStart() {
             var client = new DexContainer.Client("x", "x", "x");
 
-            try (var container = new DexContainer(TEST_PORT)) {
+            try (var container = new DexContainer()) {
                 container.start();
                 var defaultClient = container.getClient();
                 assertThatExceptionOfType(IllegalStateException.class)
@@ -103,7 +103,7 @@ public class DexContainerTest {
 
         @Test
         void mustStartBeforeGettingClient() {
-            try (var container = new DexContainer(TEST_PORT)) {
+            try (var container = new DexContainer()) {
                 assertThatExceptionOfType(IllegalStateException.class)
                         .isThrownBy(container::getClient);
                 assertThatExceptionOfType(IllegalStateException.class)
@@ -118,7 +118,7 @@ public class DexContainerTest {
         void multipleUsers() throws IOException, InterruptedException, URISyntaxException {
             var alice = new DexContainer.User("alice", "alice@example.com", "alice-password");
             var bob = new DexContainer.User("bob", "bob@example.com", "bob-password");
-            try (var container = new DexContainer(TEST_PORT)) {
+            try (var container = new DexContainer()) {
                 container
                         .withUser(alice)
                         .withUser(bob)
@@ -149,7 +149,7 @@ public class DexContainerTest {
         @Test
         void mustRegisterUsersBeforeStart() {
             var user = new DexContainer.User("x", "x", "x");
-            try (var container = new DexContainer(TEST_PORT)) {
+            try (var container = new DexContainer()) {
                 container.start();
                 var defaultUser = container.getUser();
                 assertThatExceptionOfType(IllegalStateException.class)
@@ -161,7 +161,7 @@ public class DexContainerTest {
 
         @Test
         void mustStartBeforeGettingUser() {
-            try (var container = new DexContainer(TEST_PORT)) {
+            try (var container = new DexContainer()) {
                 assertThatExceptionOfType(IllegalStateException.class)
                         .isThrownBy(container::getUser);
                 assertThatExceptionOfType(IllegalStateException.class)

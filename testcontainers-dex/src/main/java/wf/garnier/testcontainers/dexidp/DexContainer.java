@@ -1,6 +1,7 @@
 package wf.garnier.testcontainers.dexidp;
 
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -9,11 +10,11 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.Transferable;
 
 
 /**
@@ -30,40 +31,64 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     private static final int DEX_PORT = 5556;
 
+    private static final String DEX_CONFIG_FILE = "/var/dex/dex.yml";
+
     private List<Client> clients = new ArrayList<>();
 
     private List<User> users = new ArrayList<>();
 
     private boolean isConfigured = false;
 
-    private final int hostPort;
-
     /**
-     * Constructs a GenericContainer running Dex {@code v2.37.0}, listening on the
-     * provided host port.
-     * <p>
-     * Dex requires the {@code issuer} property to be defined before the container
-     * starts, so the port which consumers will use to reach the container needs to
-     * be known before the container starts.
-     *
-     * @param hostPort the port exposed on the host
+     * Constructs a GenericContainer running Dex {@code v2.37.0}.
      */
-    public DexContainer(int hostPort) {
+    public DexContainer() {
         super("dexidp/dex:v2.37.0");
-        // Must be 1-1 mapping because the issuer-uri must match
-        this.hostPort = hostPort;
-        this.addExposedPort(DEX_PORT); // TODO: explain
-        this.addFixedExposedPort(this.hostPort, DEX_PORT);
+        this.addExposedPort(DEX_PORT);
         this.waitingFor(
                 Wait.forHttp("/dex/.well-known/openid-configuration")
                         .forPort(DEX_PORT)
                         .withStartupTimeout(Duration.ofSeconds(10))
         );
+        //@formatter:off
         this.withCommand(
-                "dex",
-                "serve",
-                "/etc/dex/dex.yml"
+                "/bin/sh",
+                "-c",
+                // We wait for the config file to be present before starting the Dex process itself.
+                // The config file must be written AFTER the container is started, see #containerIsStarting
+                """
+                while [[ ! -f %s ]]; do sleep 1; echo "Waiting for configuration file..."; done;
+                dex serve %s
+                """.formatted(DEX_CONFIG_FILE, DEX_CONFIG_FILE)
         );
+        //@formatter:on
+    }
+
+    /**
+     * Hack. Write the Dex configuration after the container has started.
+     * <p>
+     * The Dex configuration must contain an {@code issuer} property, that represents the publicly
+     * accessible URL of the running OpenID Provider. It MUST be {@code http://getHost():getMappedPort(DEX_PORT)},
+     * so that it reflects the port that is exposed on the host.
+     * <p>
+     * There is a lifecycle issue. To obtain the mapped port (and write the config file), the container must first
+     * be started. To start the dex process, the config file must be present. So the {@code dex serve} command
+     * cannot be the launch command of the container, otherwise we would have a circular dependency. Instead, the
+     * launch command waits for the file to be present and then runs dex. Right after the command is fired,
+     * this method is called, we grab the mapped port and we write the config file to the correct location.
+     *
+     * @param containerInfo - unused (it uses #getMappedPort() under the hood though)
+     */
+    @Override
+    protected void containerIsStarting(InspectContainerResponse containerInfo) {
+        try {
+            var result = this.execInContainer("/bin/sh", "-c", "echo '%s' > %s".formatted(configuration(), DEX_CONFIG_FILE));
+            if (result.getExitCode() != 0) {
+                throw new RuntimeException("Could not write config file in container. Result details: " + result);
+            }
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Could not write config file in container", e);
+        }
     }
 
     @Override
@@ -79,7 +104,6 @@ public class DexContainer extends GenericContainer<DexContainer> {
         } else {
             users = Collections.unmodifiableList(users);
         }
-        this.withCopyToContainer(Transferable.of(configuration()), "/etc/dex/dex.yml");
     }
 
     /**
@@ -90,7 +114,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * @see <a href="https://openid.net/specs/openid-connect-core-1_0.html#Terminology">OpenID Connect Core - Terminology</a>
      */
     public String getIssuerUri() {
-        return "http://%s:%s/dex".formatted(getHost(), this.hostPort);
+        return "http://%s:%s/dex".formatted(getHost(), this.getMappedPort(DEX_PORT));
     }
 
     private String configuration() {
