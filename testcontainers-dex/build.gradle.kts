@@ -19,6 +19,8 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
     testImplementation("org.apache.httpcomponents.core5:httpcore5:5.2.1")
+    testImplementation("ch.qos.logback:logback-core:1.4.11")
+    testImplementation("ch.qos.logback:logback-classic:1.4.11")
 }
 
 java {
