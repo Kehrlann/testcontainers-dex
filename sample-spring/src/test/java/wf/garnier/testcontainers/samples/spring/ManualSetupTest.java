@@ -23,7 +23,7 @@ class ManualSetupTest {
     @Test
     void manualSetupTest() throws IOException {
         var client = new DexContainer.Client("some-client", "some-secret", "http://localhost:2345/login/oauth2/code/dex");
-        try (var container = new DexContainer()) {
+        try (var container = new DexContainer(5557)) {
             container.withClient(client).start();
             var env = new MockEnvironment()
                     .withProperty("server.port=", "2345")

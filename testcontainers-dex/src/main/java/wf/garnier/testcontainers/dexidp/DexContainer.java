@@ -16,7 +16,6 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 
 
-
 /**
  * Represents a container running the Dex OpenID Connect Provider. It provides a lightweight,
  * OpenID-compliant identity provider for all your integration tests that deal with {@code id_token}
@@ -29,7 +28,7 @@ import org.testcontainers.images.builder.Transferable;
  */
 public class DexContainer extends GenericContainer<DexContainer> {
 
-    private final int DEX_PORT = 5556;
+    private static final int DEX_PORT = 5556;
 
     private List<Client> clients = new ArrayList<>();
 
@@ -37,13 +36,24 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     private boolean isConfigured = false;
 
+    private final int hostPort;
+
     /**
-     * Constructs a GenericContainer running Dex {@code v2.37.0}.
+     * Constructs a GenericContainer running Dex {@code v2.37.0}, listening on the
+     * provided host port.
+     * <p>
+     * Dex requires the {@code issuer} property to be defined before the container
+     * starts, so the port which consumers will use to reach the container needs to
+     * be known before the container starts.
+     *
+     * @param hostPort the port exposed on the host
      */
-    public DexContainer() {
+    public DexContainer(int hostPort) {
         super("dexidp/dex:v2.37.0");
         // Must be 1-1 mapping because the issuer-uri must match
-        this.setPortBindings(Collections.singletonList("%s:%s".formatted(DEX_PORT, DEX_PORT)));
+        this.hostPort = hostPort;
+        this.addExposedPort(DEX_PORT); // TODO: explain
+        this.addFixedExposedPort(this.hostPort, DEX_PORT);
         this.waitingFor(
                 Wait.forHttp("/dex/.well-known/openid-configuration")
                         .forPort(DEX_PORT)
@@ -80,7 +90,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * @see <a href="https://openid.net/specs/openid-connect-core-1_0.html#Terminology">OpenID Connect Core - Terminology</a>
      */
     public String getIssuerUri() {
-        return "http://%s:%s/dex".formatted(getHost(), DEX_PORT);
+        return "http://%s:%s/dex".formatted(getHost(), this.hostPort);
     }
 
     private String configuration() {
