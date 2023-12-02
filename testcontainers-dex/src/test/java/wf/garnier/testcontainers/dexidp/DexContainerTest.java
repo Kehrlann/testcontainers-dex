@@ -12,8 +12,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 public class DexContainerTest {
 
-    private static final int TEST_PORT = 5557;
-
     @Test
     void boots() {
         try (var container = new DexContainer()) {

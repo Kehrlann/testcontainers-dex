@@ -18,19 +18,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
- * TODO
+ * This test showcases how to run a {@link SpringBootTest} with Testcontainers, using only annotations.
+ * Notice that the port needs to be hardcoded for now, see README.md for more detail.
  *
+ * @see <a href="https://spring.io/blog/2023/06/23/improved-testcontainers-support-in-spring-boot-3-1"></a>
  */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @TestPropertySource(properties = "server.port=1234")
 class AutoLifecycleTest {
 
+    // Create a container with a registered Client, with a known redirect URI.
+    // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
     @Container
     static DexContainer container = new DexContainer()
             .withClient(new DexContainer.Client("some-client", "some-secret", "http://localhost:1234/login/oauth2/code/dex"));
 
-    // Y U NO AUTOWIRE ?!
+    // Here we do not autowire a WebClient with @WebMvcTest, because that client
+    // can only talk to the Spring app, and wouldn't work with the Dex login page.
     private final WebClient webClient = new WebClient();
 
     @Test

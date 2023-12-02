@@ -14,7 +14,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 
 /**
- * TODO
+ * This test showcases how to run a Spring Boot app for testing, without using annotations,
+ * and manually managing the lifecycle of both the TestContainer and the Boot app.
+ * Notice that the port needs to be hardcoded for now, see README.md for more detail.
  */
 class ManualSetupTest {
 
@@ -22,10 +24,13 @@ class ManualSetupTest {
 
     @Test
     void manualSetupTest() throws IOException {
+        // The redirect URI is a well known Boot uri
+        // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
         var client = new DexContainer.Client("some-client", "some-secret", "http://localhost:2345/login/oauth2/code/dex");
         try (var container = new DexContainer()) {
             container.withClient(client).start();
             var env = new MockEnvironment()
+                    // The port must match what's in the redirect URI
                     .withProperty("server.port=", "2345")
                     .withProperty("spring.security.oauth2.client.registration.dex.client-id", container.getClient().clientId())
                     .withProperty("spring.security.oauth2.client.registration.dex.client-secret", container.getClient().clientSecret())

@@ -7,7 +7,7 @@ Feel free to open an issue if you would like to improve the project and you see 
 
 - [x] Add a logger in the tests of the library
 - [x] Add a Spring Boot sample
-- [ ] Write documentation
+- [x] Write documentation
 - [ ] Add a way to get openid configuration data without using the OpenID Discovery mechanism
 - [ ] Add a test for the userinfo endpoint
 - [x] Use the ephemeral port for the container in the issuer-uri

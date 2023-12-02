@@ -114,6 +114,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * @see <a href="https://openid.net/specs/openid-connect-core-1_0.html#Terminology">OpenID Connect Core - Terminology</a>
      */
     public String getIssuerUri() {
+        // TODO: throw a better exception.
         return "http://%s:%s/dex".formatted(getHost(), this.getMappedPort(DEX_PORT));
     }
 
