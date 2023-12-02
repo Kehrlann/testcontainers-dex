@@ -1,11 +1,13 @@
+import org.jreleaser.model.Active
+
 plugins {
     id("java-library")
     id("maven-publish")
-    id("signing")
+    id("org.jreleaser") version "1.9.0"
 }
 
 group = "wf.garnier"
-version = "1.0.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -62,11 +64,37 @@ publishing {
             }
         }
     }
+    repositories {
+        maven {
+            url = uri(layout.buildDirectory.dir("staging-deploy"))
+        }
+    }
 }
 
-signing {
-    // Run: export GPG_TTY=$(tty)
-    // Run: ./gradlew publishToMavenLocal --console plain
-    useGpgCmd()
-    sign(publishing.publications["mavenJava"])
+jreleaser {
+    gitRootSearch.set(true)
+    signing {
+        active = Active.ALWAYS
+        armored = true
+    }
+    deploy {
+        maven {
+            nexus2 {
+                create("maven-central") {
+                    active.set(Active.ALWAYS)
+                    url = "https://s01.oss.sonatype.org/service/local"
+                    snapshotUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                    closeRepository = true
+                    releaseRepository = true
+                    stagingRepository("build/staging-deploy")
+                }
+            }
+        }
+    }
+    release {
+        github {
+            repoOwner = "Kehrlann"
+            overwrite = true
+        }
+    }
 }

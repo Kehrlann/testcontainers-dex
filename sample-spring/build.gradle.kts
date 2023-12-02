@@ -12,7 +12,6 @@ java {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
@@ -25,7 +24,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("net.sourceforge.htmlunit:htmlunit")
-    testImplementation("wf.garnier:testcontainers-dex:1.0.0-SNAPSHOT")
+    testImplementation("wf.garnier:testcontainers-dex:1.0.0")
 }
 
 tasks.test {
