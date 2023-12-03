@@ -25,7 +25,7 @@ Maven:
     <dependency>
         <groupId>wf.garnier</groupId>
         <artifactId>testcontainers-dex</artifactId>
-        <version>1.0.0</version>
+        <version>2.0.0</version>
         <scope>test</scope>
     </dependency>
 </dependencies>
@@ -35,7 +35,7 @@ Gradle:
 
 ```gradle
 testImplementation("org.testcontainers:testcontainers:1.19.3")
-testImplementation("wf.garnier:testcontainers-dex:1.0.0")
+testImplementation("wf.garnier:testcontainers-dex:2.0.0")
 ```
 
 ## Usage
