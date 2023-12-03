@@ -48,7 +48,7 @@ Basic usage:
 class MyTests {
     @Test
     public void someTest() {
-        try (var container = new DexContainer()) {
+        try (var container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))) {
             container.start();
             var issuerUri = container.getIssuerUri();
             var config = DO_SOME_CONFIGURATION(issuerUri);
@@ -80,7 +80,7 @@ class AutoLifecycleTest {
     // Create a container with a registered Client, with a known redirect URI.
     // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
     @Container
-    static DexContainer container = new DexContainer()
+    static DexContainer container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))
             .withClient(new DexContainer.Client("some-client", "some-secret", "http://localhost:1234/login/oauth2/code/dex"));
 
     // Here we do not autowire a WebClient with @WebMvcTest, because that client
@@ -119,7 +119,7 @@ You can register your own clients, but this MUST happen before starting the cont
 class MyTests {
     @Test
     public void someTest() {
-        var container = new DexContainer()
+        var container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))
                 .withClient(new DexContainer.Client("client-1", "client-1-secret", "https://one.example.com/authorized"))
                 .withClient(new DexContainer.Client("client-2", "client-2-secret", "https://two.example.com/authorized"));
     }
@@ -133,7 +133,7 @@ You can also users, but this MUST happen before starting the container. To log i
 class MyTests {
     @Test
     public void someTest() {
-        var container = new DexContainer()
+        var container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))
                 .withUser(new DexContainer.User("alice", "alice@example.com", "alice-password"))
                 .withUser(new DexContainer.User("bob", "bob@example.com", "bob-password"));
     }
@@ -147,7 +147,7 @@ Lastly, to dynamically obtain configuration data, use the `issuerUri` property a
 ```java
 class MyTests {
     public void someTest() {
-        try (var container = new DexContainer()) {
+        try (var container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))) {
             container.start();
             var issuerUri = container.getIssuerUri();
             var openidConfigurationUri = URI.create(issuerUri + "/.well-known/openid-configuration");

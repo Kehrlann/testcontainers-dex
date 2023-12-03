@@ -31,7 +31,7 @@ class AutoLifecycleTest {
     // Create a container with a registered Client, with a known redirect URI.
     // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
     @Container
-    static DexContainer container = new DexContainer()
+    static DexContainer container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))
             .withClient(new DexContainer.Client("some-client", "some-secret", "http://localhost:1234/login/oauth2/code/dex"));
 
     // Here we do not autowire a WebClient with @WebMvcTest, because that client
