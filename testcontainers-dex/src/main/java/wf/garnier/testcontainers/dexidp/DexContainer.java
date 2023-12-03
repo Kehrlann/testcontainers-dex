@@ -138,7 +138,14 @@ public class DexContainer extends GenericContainer<DexContainer> {
         return "http://%s:%s/dex".formatted(getHost(), this.getMappedPort(DEX_PORT));
     }
 
-    private String configuration() {
+    /**
+     * Produces the configuration file that is going to be used in the container, used when the
+     * container is starting.
+     *
+     * @return the YAML configuration
+     * @see <a href="https://dexidp.io/docs/getting-started/#configuration">Dex > Getting Started > Configuration</a>
+     */
+    protected String configuration() {
         var baseConfiguration = """
                 issuer: %s
                 storage:
