@@ -39,6 +39,8 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     private boolean isConfigured = false;
 
+    private boolean isStarted = false;
+
     /**
      * Constructs a GenericContainer running Dex {@code v2.37.0}.
      */
@@ -81,6 +83,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
      */
     @Override
     protected void containerIsStarting(InspectContainerResponse containerInfo) {
+        isStarted = true;
         try {
             var result = this.execInContainer("/bin/sh", "-c", "echo '%s' > %s".formatted(configuration(), DEX_CONFIG_FILE));
             if (result.getExitCode() != 0) {
@@ -114,7 +117,9 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * @see <a href="https://openid.net/specs/openid-connect-core-1_0.html#Terminology">OpenID Connect Core - Terminology</a>
      */
     public String getIssuerUri() {
-        // TODO: throw a better exception.
+        if (!this.isStarted) {
+            throw new IllegalStateException("Issuer URI can only be obtained after the container has started.");
+        }
         return "http://%s:%s/dex".formatted(getHost(), this.getMappedPort(DEX_PORT));
     }
 

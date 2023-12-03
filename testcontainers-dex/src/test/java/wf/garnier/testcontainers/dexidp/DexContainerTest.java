@@ -9,6 +9,7 @@ import wf.garnier.testcontainers.dexidp.utils.Oidc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 public class DexContainerTest {
 
@@ -50,6 +51,18 @@ public class DexContainerTest {
             assertThat(token.accessTokenClaims())
                     .containsEntry("iss", container.getIssuerUri())
                     .containsEntry("aud", client.clientId());
+        }
+    }
+
+    @Test
+    void issuerUriOnlyAvailableAfterStartup() {
+        try (var container = new DexContainer()) {
+            assertThatExceptionOfType(IllegalStateException.class)
+                    .isThrownBy(container::getIssuerUri)
+                    .withMessage("Issuer URI can only be obtained after the container has started.");
+            container.start();
+            assertThatNoException()
+                    .isThrownBy(container::getIssuerUri);
         }
     }
 
