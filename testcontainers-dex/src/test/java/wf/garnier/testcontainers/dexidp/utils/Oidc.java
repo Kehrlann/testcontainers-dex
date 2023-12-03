@@ -6,7 +6,6 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 
@@ -14,7 +13,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import org.apache.hc.core5.net.URLEncodedUtils;
 import org.apache.hc.core5.net.URIBuilder;
 import wf.garnier.testcontainers.dexidp.DexContainer;
 
@@ -83,7 +81,9 @@ public class Oidc {
                 .headers()
                 .firstValue("location")
                 .get();
-        var code = URLEncodedUtils.parse(URI.create(redirectUriWithCode), StandardCharsets.UTF_8)
+
+        var code = new URIBuilder(redirectUriWithCode)
+                .getQueryParams()
                 .stream()
                 .filter(nvp -> nvp.getName().equals("code"))
                 .findFirst()
