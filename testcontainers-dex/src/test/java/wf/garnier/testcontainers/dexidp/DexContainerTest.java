@@ -91,7 +91,8 @@ public class DexContainerTest {
                 container.start();
                 var defaultClient = container.getClient();
                 assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(() -> container.withClient(client));
+                        .isThrownBy(() -> container.withClient(client))
+                        .withMessage("clients cannot be added after the container is started");
 
                 assertThat(container.getClients())
                         .hasSize(1)
@@ -103,9 +104,11 @@ public class DexContainerTest {
         void mustStartBeforeGettingClient() {
             try (var container = new DexContainer()) {
                 assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(container::getClient);
+                        .isThrownBy(container::getClient)
+                        .withMessage("must start the container before accessing the clients");
                 assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(container::getClients);
+                        .isThrownBy(container::getClients)
+                        .withMessage("must start the container before accessing the clients");
             }
         }
     }
@@ -151,7 +154,8 @@ public class DexContainerTest {
                 container.start();
                 var defaultUser = container.getUser();
                 assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(() -> container.withUser(user));
+                        .isThrownBy(() -> container.withUser(user))
+                        .withMessage("users cannot be added after the container is started");
 
                 assertThat(container.getUser()).isEqualTo(defaultUser);
             }
@@ -161,9 +165,11 @@ public class DexContainerTest {
         void mustStartBeforeGettingUser() {
             try (var container = new DexContainer()) {
                 assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(container::getUser);
+                        .isThrownBy(container::getUser)
+                        .withMessage("must start the container before accessing the users");
                 assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(container::getUsers);
+                        .isThrownBy(container::getUsers)
+                        .withMessage("must start the container before accessing the users");
             }
         }
     }
