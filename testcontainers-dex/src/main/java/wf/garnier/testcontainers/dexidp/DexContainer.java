@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 
 /**
@@ -29,6 +30,16 @@ import org.testcontainers.containers.wait.strategy.Wait;
  */
 public class DexContainer extends GenericContainer<DexContainer> {
 
+    /**
+     * The image that this container is tested against.
+     */
+    public static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("dexidp/dex");
+
+    /**
+     * The tag that this container is tested against.
+     */
+    public static final String DEFAULT_TAG = "v2.37.0";
+
     private static final int DEX_PORT = 5556;
 
     private static final String DEX_CONFIG_FILE = "/var/dex/dex.yml";
@@ -42,10 +53,14 @@ public class DexContainer extends GenericContainer<DexContainer> {
     private boolean isStarted = false;
 
     /**
-     * Constructs a GenericContainer running Dex {@code v2.37.0}.
+     * Constructs a GenericContainer running Dex.
+     *
+     * @param dockerImageName - the Docker image to use.
+     * @see DexContainer#DEFAULT_IMAGE_NAME
+     * @see DexContainer#DEFAULT_TAG
      */
-    public DexContainer() {
-        super("dexidp/dex:v2.37.0");
+    public DexContainer(DockerImageName dockerImageName) {
+        super(dockerImageName);
         this.addExposedPort(DEX_PORT);
         this.waitingFor(
                 Wait.forHttp("/dex/.well-known/openid-configuration")
