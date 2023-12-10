@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package api;
+
+option java_package = "wf.garnier.testcontainers.dexidp.grpc";
+option java_outer_classname = "DexGrpcApi";
+
+// Client represents an OAuth2 client.
+message Client {
+  string id = 1;
+  string secret = 2;
+  repeated string redirect_uris = 3;
+  repeated string trusted_peers = 4;
+  bool public = 5;
+  string name = 6;
+  string logo_url = 7;
+}
+
+// CreateClientReq is a request to make a client.
+message CreateClientReq {
+  Client client = 1;
+}
+
+// CreateClientResp returns the response from creating a client.
+message CreateClientResp {
+  bool already_exists = 1;
+  Client client = 2;
+}
+
+// DeleteClientReq is a request to delete a client.
+message DeleteClientReq {
+  // The ID of the client.
+  string id = 1;
+}
+
+// DeleteClientResp determines if the client is deleted successfully.
+message DeleteClientResp {
+  bool not_found = 1;
+}
+
+// Password is an email for password mapping managed by the storage.
+message Password {
+  string email = 1;
+
+  // Currently we do not accept plain text passwords. Could be an option in the future.
+  bytes hash = 2;
+  string username = 3;
+  string user_id = 4;
+}
+
+// CreatePasswordReq is a request to make a password.
+message CreatePasswordReq {
+  Password password = 1;
+}
+
+// CreatePasswordResp returns the response from creating a password.
+message CreatePasswordResp {
+  bool already_exists = 1;
+}
+
+// DeletePasswordReq is a request to delete a password.
+message DeletePasswordReq {
+  string email = 1;
+}
+
+// DeletePasswordResp returns the response from deleting a password.
+message DeletePasswordResp {
+  bool not_found = 1;
+}
+
+
+// Dex represents the dex gRPC service.
+service Dex {
+  // GetClient gets a client.
+  rpc CreateClient(CreateClientReq) returns (CreateClientResp) {};
+  // UpdateClient updates an existing client
+  rpc DeleteClient(DeleteClientReq) returns (DeleteClientResp) {};
+  // CreatePassword creates a password.
+  rpc CreatePassword(CreatePasswordReq) returns (CreatePasswordResp) {};
+  // DeletePassword deletes the password.
+  rpc DeletePassword(DeletePasswordReq) returns (DeletePasswordResp) {};
+}

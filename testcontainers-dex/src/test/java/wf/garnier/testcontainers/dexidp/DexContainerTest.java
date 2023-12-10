@@ -96,6 +96,8 @@ public class DexContainerTest {
                         .hasSize(2)
                         .containsExactly(first, second);
                 assertThat(container.getClient()).isEqualTo(first);
+                assertThat(container.getClient("client-1")).isEqualTo(first);
+                assertThat(container.getClient("client-2")).isEqualTo(second);
 
                 var responseFirst = Oidc.obtainToken(configuration, first, user);
                 assertThat(responseFirst.idTokenClaims().get("aud")).isEqualTo("client-1");
@@ -107,31 +109,98 @@ public class DexContainerTest {
         }
 
         @Test
-        void mustRegisterClientsBeforeStart() {
-            var client = new DexContainer.Client("x", "x", "x");
-
+        void immutableClients() {
+            var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
             try (var container = getDefaultContainer()) {
+                assertThatExceptionOfType(UnsupportedOperationException.class)
+                        .isThrownBy(() -> container.getClients().add(testClient));
                 container.start();
-                var defaultClient = container.getClient();
-                assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(() -> container.withClient(client))
-                        .withMessage("clients cannot be added after the container is started");
-
-                assertThat(container.getClients())
-                        .hasSize(1)
-                        .containsExactly(defaultClient);
+                assertThatExceptionOfType(UnsupportedOperationException.class)
+                        .isThrownBy(() -> container.getClients().add(testClient));
             }
         }
 
         @Test
-        void mustStartBeforeGettingClient() {
+        void registerClientAfterStart() throws IOException, InterruptedException, URISyntaxException {
             try (var container = getDefaultContainer()) {
-                assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(container::getClient)
-                        .withMessage("must start the container before accessing the clients");
-                assertThatExceptionOfType(IllegalStateException.class)
-                        .isThrownBy(container::getClients)
-                        .withMessage("must start the container before accessing the clients");
+                var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
+
+                container.start();
+                var defaultClient = container.getClient();
+                container.withClient(testClient);
+
+                var configuration = Oidc.getConfiguration(container.getIssuerUri());
+                var user = container.getUser();
+
+                assertThat(container.getClients())
+                        .hasSize(2)
+                        .containsExactly(defaultClient, testClient);
+                assertThat(container.getClient()).isEqualTo(defaultClient);
+                assertThat(container.getClient("test-client")).isEqualTo(testClient);
+
+                var responseTest = Oidc.obtainToken(configuration, testClient, user);
+                assertThat(responseTest.idTokenClaims().get("aud")).isEqualTo("test-client");
+                assertThat(responseTest.accessTokenClaims().get("aud")).isEqualTo("test-client");
+            }
+        }
+
+        @Test
+        void removeClient() throws IOException, InterruptedException {
+            var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
+            try (var container = getDefaultContainer()) {
+                container.start();
+                var defaultClient = container.getClient();
+                container.withClient(testClient);
+                var configuration = Oidc.getConfiguration(container.getIssuerUri());
+                var user = container.getUser();
+
+                var removed = container.removeClient(testClient.clientId());
+
+                assertThat(removed).isEqualTo(testClient);
+                assertThat(container.getClients())
+                        .hasSize(1)
+                        .containsExactly(defaultClient);
+                assertThatExceptionOfType(Oidc.OidcException.class)
+                        .isThrownBy(() -> Oidc.obtainToken(configuration, testClient, user));
+                assertThatNoException()
+                        .isThrownBy(() -> Oidc.obtainToken(configuration, defaultClient, user));
+            }
+        }
+
+        @Test
+        void removeDefaultClient() throws IOException, InterruptedException, URISyntaxException {
+            try (var container = getDefaultContainer()) {
+                container.start();
+                var defaultClient = container.getClient();
+
+                var configuration = Oidc.getConfiguration(container.getIssuerUri());
+                var user = container.getUser();
+
+                var responseDefault = Oidc.obtainToken(configuration, defaultClient, user);
+                assertThat(responseDefault.idTokenClaims().get("aud")).isEqualTo(defaultClient.clientId());
+
+                var removed = container.removeClient(defaultClient.clientId());
+                assertThat(removed).isEqualTo(defaultClient);
+                assertThatExceptionOfType(Oidc.OidcException.class)
+                        .isThrownBy(() -> Oidc.obtainToken(configuration, defaultClient, user));
+            }
+        }
+
+        @Test
+        void removeClientBeforeStart() {
+            var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
+            try (var container = getDefaultContainer()) {
+                container.withClient(testClient);
+                assertThat(container.removeClient("test-client")).isEqualTo(testClient);
+            }
+        }
+
+        @Test
+        void removeNonExistingClient() {
+            try (var container = getDefaultContainer()) {
+                assertThat(container.removeClient("this-client-does-not-exist")).isNull();
+                container.start();
+                assertThat(container.removeClient("this-client-does-not-exist")).isNull();
             }
         }
     }

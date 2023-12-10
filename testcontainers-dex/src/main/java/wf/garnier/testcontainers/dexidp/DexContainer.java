@@ -5,17 +5,25 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nullable;
+
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
+import wf.garnier.testcontainers.dexidp.grpc.DexGrpc;
+import wf.garnier.testcontainers.dexidp.grpc.DexGrpcApi;
 
 
 /**
@@ -40,17 +48,23 @@ public class DexContainer extends GenericContainer<DexContainer> {
      */
     public static final String DEFAULT_TAG = "v2.37.0";
 
-    private static final int DEX_PORT = 5556;
+    private static final int DEX_HTTP_PORT = 5556;
+
+    private static final int DEX_GRPC_PORT = 5557;
 
     private static final String DEX_CONFIG_FILE = "/var/dex/dex.yml";
 
-    private List<Client> clients = new ArrayList<>();
+    private final Map<String, Client> clients = new LinkedHashMap<>();
 
     private List<User> users = new ArrayList<>();
 
     private boolean isConfigured = false;
 
     private boolean isStarted = false;
+
+    private DexGrpc.DexBlockingStub grpcStub = null;
+
+    private ManagedChannel channel;
 
     /**
      * Constructs a GenericContainer running Dex.
@@ -61,10 +75,11 @@ public class DexContainer extends GenericContainer<DexContainer> {
      */
     public DexContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
-        this.addExposedPort(DEX_PORT);
+        this.addExposedPort(DEX_HTTP_PORT);
+        this.addExposedPort(DEX_GRPC_PORT);
         this.waitingFor(
                 Wait.forHttp("/dex/.well-known/openid-configuration")
-                        .forPort(DEX_PORT)
+                        .forPort(DEX_HTTP_PORT)
                         .withStartupTimeout(Duration.ofSeconds(10))
         );
         //@formatter:off
@@ -92,13 +107,12 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * be started. To start the dex process, the config file must be present. So the {@code dex serve} command
      * cannot be the launch command of the container, otherwise we would have a circular dependency. Instead, the
      * launch command waits for the file to be present and then runs dex. Right after the command is fired,
-     * this method is called, we grab the mapped port and we write the config file to the correct location.
+     * this method is called, we grab the mapped port, and we write the config file to the correct location.
      *
      * @param containerInfo - unused (it uses #getMappedPort() under the hood though)
      */
     @Override
     protected void containerIsStarting(InspectContainerResponse containerInfo) {
-        isStarted = true;
         try {
             var result = this.execInContainer("/bin/sh", "-c", "echo '%s' > %s".formatted(configuration(), DEX_CONFIG_FILE));
             if (result.getExitCode() != 0) {
@@ -109,14 +123,44 @@ public class DexContainer extends GenericContainer<DexContainer> {
         }
     }
 
+    /**
+     * When the container is started, and the Dex Process is running, open a private gRPC channel to register
+     * clients and users.
+     *
+     * @param containerInfo ignored
+     */
+    @Override
+    protected void containerIsStarted(InspectContainerResponse containerInfo) {
+        isStarted = true;
+        channel = ManagedChannelBuilder.forAddress(getHost(), getMappedPort(DEX_GRPC_PORT))
+                .usePlaintext()
+                .build();
+        grpcStub = DexGrpc.newBlockingStub(channel);
+
+        if (clients.isEmpty()) {
+            var defaultClient = new Client("example-app", "ZXhhbXBsZS1hcHAtc2VjcmV0", "http://127.0.0.1:5555/callback");
+            clients.put(defaultClient.clientId(), defaultClient);
+        }
+        clients.values().forEach(this::registerClient);
+    }
+
+    /**
+     * When the container is stopping, close the open gRPC channel.
+     *
+     * @param containerInfo ignored
+     */
+    @Override
+    protected void containerIsStopping(InspectContainerResponse containerInfo) {
+        if (!channel.isShutdown()) {
+            channel.shutdown();
+        }
+        grpcStub = null;
+        channel = null;
+    }
+
     @Override
     protected void configure() {
         this.isConfigured = true;
-        if (clients.isEmpty()) {
-            clients = Collections.singletonList(new Client("example-app", "ZXhhbXBsZS1hcHAtc2VjcmV0", "http://127.0.0.1:5555/callback"));
-        } else {
-            clients = Collections.unmodifiableList(clients);
-        }
         if (users.isEmpty()) {
             users = Collections.singletonList(new User("admin", "admin@example.com", "password"));
         } else {
@@ -127,23 +171,41 @@ public class DexContainer extends GenericContainer<DexContainer> {
     /**
      * Return the OpenID Connect Provider's {@code issuer identifier}. It will match whatever is in
      * the OpenID Configuration Document.
+     * <p>
+     * The container MUST be started before calling this method.
      *
      * @return the issuer URI, in String format.
+     * @throws IllegalStateException if the container is not started
      * @see <a href="https://openid.net/specs/openid-connect-core-1_0.html#Terminology">OpenID Connect Core - Terminology</a>
      */
     public String getIssuerUri() {
         if (!this.isStarted) {
             throw new IllegalStateException("Issuer URI can only be obtained after the container has started.");
         }
-        return "http://%s:%s/dex".formatted(getHost(), this.getMappedPort(DEX_PORT));
+        return templateIssuerUri();
+    }
+
+
+    /**
+     * Template the issuer URI from host and port.
+     * <p>
+     * The container MUST be created before calling this method, in order get the mapped port.
+     *
+     * @return the issuer URI
+     */
+    private String templateIssuerUri() {
+        return "http://%s:%s/dex".formatted(getHost(), getMappedPort(DEX_HTTP_PORT));
     }
 
     /**
      * Produces the configuration file that is going to be used in the container, used when the
      * container is starting.
+     * <p>
+     * The container MUST be created before calling this method.
      *
      * @return the YAML configuration
      * @see <a href="https://dexidp.io/docs/getting-started/#configuration">Dex > Getting Started > Configuration</a>
+     * @see #templateIssuerUri()
      */
     protected String configuration() {
         var baseConfiguration = """
@@ -154,11 +216,13 @@ public class DexContainer extends GenericContainer<DexContainer> {
                     file: /etc/dex/dex.db
                 web:
                   http: 0.0.0.0:%s
+                grpc:
+                  addr: 0.0.0.0:%s
                 enablePasswordDB: true
                 oauth2:
                     skipApprovalScreen: true
-                """.formatted(getIssuerUri(), DEX_PORT);
-        return baseConfiguration + getUserConfiguration() + getClientConfiguration();
+                """.formatted(templateIssuerUri(), DEX_HTTP_PORT, DEX_GRPC_PORT);
+        return baseConfiguration + getUserConfiguration();
     }
 
     private String getUserConfiguration() {
@@ -179,25 +243,6 @@ public class DexContainer extends GenericContainer<DexContainer> {
                 .formatted(users);
     }
 
-    private String getClientConfiguration() {
-        var clients = getClients().stream()
-                .map(c -> """
-                        - id: %s
-                          name: %s
-                          secret: %s
-                          redirectURIs:
-                            - %s
-                        """
-                        .formatted(c.clientId(), c.clientId(), c.clientSecret(), c.redirectUri()))
-                .map(c -> c.indent(2))
-                .collect(Collectors.joining());
-        return """
-                staticClients:
-                %s
-                """
-                .formatted(clients);
-    }
-
     /**
      * Add an OAuth2 Client capable of interacting with the OpenID provider.
      * <p>
@@ -208,41 +253,84 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * @see #getClients()
      */
     public DexContainer withClient(Client client) {
-        if (isConfigured) {
-            throw new IllegalStateException("clients cannot be added after the container is started");
+        if (isStarted) {
+            registerClient(client);
         }
-        clients.add(client);
+        clients.put(client.clientId(), client);
         return self();
     }
 
     /**
      * Get an OAuth2 Client to interact with the OpenID Provider. When there are multiple clients,
      * only return the first client. When the user has defined no client, return a default client.
-     * <p>
-     * This method MUST NOT be called before the container is started.
      *
      * @return the client
-     * @throws IllegalStateException when called before the container is started
-     * @see #getClients()
      */
     public Client getClient() {
         return getClients().get(0);
     }
 
     /**
+     * Get an OAuth2 Client to interact with the OpenID Provider, by {@code client_id}.
+     *
+     * @return the Client
+     */
+    public Client getClient(String clientId) {
+        return clients.get(clientId);
+    }
+
+    /**
      * Get the list of all defined OAuth2 Clients to interact with the OpenID Provider. When the user has
      * defined no client, returns a single default client.
-     * <p>
-     * This method MUST NOT be called before the container is started.
      *
      * @return the clients
-     * @throws IllegalStateException when called before the container is started
      */
     public List<Client> getClients() {
-        if (!isConfigured) {
-            throw new IllegalStateException("must start the container before accessing the clients");
+        var clients = new ArrayList<>(this.clients.values());
+        return Collections.unmodifiableList(clients);
+    }
+
+
+    /**
+     * Remove an OAuth2 Client from the identity provider, by {@code client_id}
+     *
+     * @param clientId - the client_id of the client to remove
+     * @return the removed client, or {@code null} if there was no client registered under this id.
+     */
+    @Nullable
+    public Client removeClient(String clientId) {
+        if (isStarted) {
+            unregisterClient(clientId);
         }
-        return clients;
+        return clients.remove(clientId);
+    }
+
+    /**
+     * Register the client with the running Dex IDP. The container must be started for this work.
+     *
+     * @param client the client to register
+     */
+    private void registerClient(Client client) {
+        var grpcClient = DexGrpcApi.Client.newBuilder()
+                .setId(client.clientId())
+                .setSecret(client.clientSecret())
+                .addRedirectUris(client.redirectUri());
+        var request = DexGrpcApi.CreateClientReq.newBuilder()
+                .setClient(grpcClient)
+                .build();
+        grpcStub.createClient(request);
+    }
+
+    /**
+     * Unregister the client with the running Dex IDP. The container must be started for this work.
+     *
+     * @param clientId the {@code client_id} of the client to unregister
+     */
+    private void unregisterClient(String clientId) {
+        var request = DexGrpcApi.DeleteClientReq.newBuilder()
+                .setId(clientId)
+                .build();
+        grpcStub.deleteClient(request);
     }
 
     /**

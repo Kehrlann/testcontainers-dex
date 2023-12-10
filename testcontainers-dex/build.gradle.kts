@@ -4,10 +4,15 @@ plugins {
     id("java-library")
     id("maven-publish")
     id("org.jreleaser") version "1.9.0"
+    id("com.google.protobuf") version "0.9.4"
 }
 
 group = "wf.garnier"
 version = "2.1.0-SNAPSHOT"
+
+val grpcVersion = "1.60.0"
+val protobufVersion = "3.25.0"
+val protocVersion = protobufVersion
 
 repositories {
     mavenCentral()
@@ -16,6 +21,12 @@ repositories {
 dependencies {
     api("org.testcontainers:testcontainers:1.19.3")
     implementation("jakarta.validation:jakarta.validation-api:3.0.2")
+    implementation("io.grpc:grpc-netty-shaded:${grpcVersion}")
+    implementation("io.grpc:grpc-protobuf:${grpcVersion}")
+    implementation("io.grpc:grpc-services:${grpcVersion}")
+    implementation("io.grpc:grpc-stub:${grpcVersion}")
+    compileOnly("org.apache.tomcat:annotations-api:6.0.53")
+
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core:3.24.2")
@@ -33,6 +44,30 @@ java {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protocVersion}"
+    }
+    plugins {
+        create("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+    }
+
+    tasks.generateProto {
+        builtins {
+            named("java") {
+                option("lite")
+            }
+        }
+        plugins {
+            create("grpc") {
+                option("lite")
+            }
+        }
+    }
 }
 
 publishing {

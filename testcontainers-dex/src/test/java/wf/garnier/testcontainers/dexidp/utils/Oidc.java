@@ -63,7 +63,7 @@ public class Oidc {
                 .send(request, HttpResponse.BodyHandlers.discarding())
                 .headers()
                 .firstValue("location")
-                .get();
+                .orElseThrow(() -> new OidcException("Dex did not redirect to the login page"));
 
         var loginUri = URI.create(configuration.issuer()).resolve(loginRedirect);
         var loginBody = new URIBuilder("")
@@ -80,14 +80,14 @@ public class Oidc {
                 .send(loginRequest, HttpResponse.BodyHandlers.discarding())
                 .headers()
                 .firstValue("location")
-                .get();
+                .orElseThrow(() -> new OidcException("Dex did not redirect back to the app with an authorization code"));
 
         var code = new URIBuilder(redirectUriWithCode)
                 .getQueryParams()
                 .stream()
                 .filter(nvp -> nvp.getName().equals("code"))
                 .findFirst()
-                .get()
+                .orElseThrow(() -> new OidcException("Missing authorization code in the response"))
                 .getValue();
 
         var tokenRequestBody = new URIBuilder("")
@@ -135,6 +135,12 @@ public class Oidc {
 
         public Map<String, Object> accessTokenClaims() {
             return parseJwt(accessToken);
+        }
+    }
+
+    public static class OidcException extends RuntimeException {
+        public OidcException(String message) {
+            super(message);
         }
     }
 }
