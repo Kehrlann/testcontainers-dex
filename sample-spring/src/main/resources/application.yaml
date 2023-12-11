@@ -13,3 +13,6 @@ spring:
         provider:
           dex:
             issuer-uri: http://localhost:5556
+  docker:
+    compose:
+      file: docker-compose.yaml
