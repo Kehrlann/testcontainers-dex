@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import wf.garnier.testcontainers.dexidp.utils.Oidc;
@@ -13,22 +15,44 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 public class DexContainerTest {
+    static DexContainer container;
+
+    static DexContainer containerWithClients;
+
+
+    static DexContainer.Client firstClient =
+            new DexContainer.Client("client-1", "client-1-secret", "https://example.com/authorized");
+
+    static DexContainer.Client secondClient =
+            new DexContainer.Client("client-2", "client-2-secret", "https://example.com/authorized");
+
+    @BeforeAll
+    static void beforeAll() {
+        containerWithClients = getDefaultContainer()
+                .withClient(firstClient)
+                .withClient(secondClient);
+        containerWithClients.start();
+
+        container = getDefaultContainer();
+        container.start();
+    }
+
+    @AfterAll
+    static void afterAll() {
+        containerWithClients.stop();
+        container.stop();
+
+    }
 
     @Test
     void boots() {
-        try (var container = getDefaultContainer()) {
-            container.start();
-            assertThat(container.isRunning()).isTrue();
-        }
+        assertThat(container.isRunning()).isTrue();
     }
 
     @Test
     void servesOpenidConfiguration() throws IOException, InterruptedException {
-        try (var container = getDefaultContainer()) {
-            container.start();
-            var configuration = Oidc.getConfiguration(container.getIssuerUri());
-            assertThat(configuration.issuer()).isEqualTo(container.getIssuerUri());
-        }
+        var configuration = Oidc.getConfiguration(container.getIssuerUri());
+        assertThat(configuration.issuer()).isEqualTo(container.getIssuerUri());
     }
 
     @Test
@@ -42,26 +66,24 @@ public class DexContainerTest {
 
     @Test
     void issuesToken() throws IOException, InterruptedException, URISyntaxException {
-        try (var container = getDefaultContainer()) {
-            container.start();
-            var configuration = Oidc.getConfiguration(container.getIssuerUri());
-            var client = container.getClient();
-            var user = container.getUser();
+        container.start();
+        var configuration = Oidc.getConfiguration(container.getIssuerUri());
+        var client = container.getClient();
+        var user = container.getUser();
 
-            var token = Oidc.obtainToken(configuration, client, user);
+        var token = Oidc.obtainToken(configuration, client, user);
 
-            assertThat(container.getClients()).containsExactly(client);
-            assertThat(token.idTokenClaims())
-                    .containsEntry("iss", container.getIssuerUri())
-                    .containsEntry("aud", client.clientId())
-                    .containsEntry("name", user.username())
-                    .containsEntry("email", user.email());
-            // The access token contains email, name, etc; but those are not
-            // strictly part of the OAuth2 or JWT spec, so we don't test against this.
-            assertThat(token.accessTokenClaims())
-                    .containsEntry("iss", container.getIssuerUri())
-                    .containsEntry("aud", client.clientId());
-        }
+        assertThat(container.getClients()).containsExactly(client);
+        assertThat(token.idTokenClaims())
+                .containsEntry("iss", container.getIssuerUri())
+                .containsEntry("aud", client.clientId())
+                .containsEntry("name", user.username())
+                .containsEntry("email", user.email());
+        // The access token contains email, name, etc; but those are not
+        // strictly part of the OAuth2 or JWT spec, so we don't test against this.
+        assertThat(token.accessTokenClaims())
+                .containsEntry("iss", container.getIssuerUri())
+                .containsEntry("aud", client.clientId());
     }
 
     @Test
@@ -70,120 +92,93 @@ public class DexContainerTest {
             assertThatExceptionOfType(IllegalStateException.class)
                     .isThrownBy(container::getIssuerUri)
                     .withMessage("Issuer URI can only be obtained after the container has started.");
-            container.start();
-            assertThatNoException()
-                    .isThrownBy(container::getIssuerUri);
         }
     }
 
     @Nested
     class Clients {
+
         @Test
         void multipleClients() throws IOException, InterruptedException, URISyntaxException {
-            var first = new DexContainer.Client("client-1", "client-1-secret", "https://example.com/authorized");
-            var second = new DexContainer.Client("client-2", "client-2-secret", "https://example.com/authorized");
+            var configuration = Oidc.getConfiguration(containerWithClients.getIssuerUri());
+            var user = containerWithClients.getUser();
 
-            try (var container = getDefaultContainer()) {
-                container
-                        .withClient(first)
-                        .withClient(second)
-                        .start();
+            assertThat(containerWithClients.getClients())
+                    .hasSize(2)
+                    .containsExactly(firstClient, secondClient);
+            assertThat(containerWithClients.getClient()).isEqualTo(firstClient);
+            assertThat(containerWithClients.getClient("client-1")).isEqualTo(firstClient);
+            assertThat(containerWithClients.getClient("client-2")).isEqualTo(secondClient);
 
-                var configuration = Oidc.getConfiguration(container.getIssuerUri());
-                var user = container.getUser();
-
-                assertThat(container.getClients())
-                        .hasSize(2)
-                        .containsExactly(first, second);
-                assertThat(container.getClient()).isEqualTo(first);
-                assertThat(container.getClient("client-1")).isEqualTo(first);
-                assertThat(container.getClient("client-2")).isEqualTo(second);
-
-                var responseFirst = Oidc.obtainToken(configuration, first, user);
-                assertThat(responseFirst.idTokenClaims().get("aud")).isEqualTo("client-1");
-                assertThat(responseFirst.accessTokenClaims().get("aud")).isEqualTo("client-1");
-                var responseSecond = Oidc.obtainToken(configuration, second, user);
-                assertThat(responseSecond.idTokenClaims().get("aud")).isEqualTo("client-2");
-                assertThat(responseSecond.accessTokenClaims().get("aud")).isEqualTo("client-2");
-            }
+            var responseFirst = Oidc.obtainToken(configuration, firstClient, user);
+            assertThat(responseFirst.idTokenClaims().get("aud")).isEqualTo("client-1");
+            assertThat(responseFirst.accessTokenClaims().get("aud")).isEqualTo("client-1");
+            var responseSecond = Oidc.obtainToken(configuration, secondClient, user);
+            assertThat(responseSecond.idTokenClaims().get("aud")).isEqualTo("client-2");
+            assertThat(responseSecond.accessTokenClaims().get("aud")).isEqualTo("client-2");
         }
 
         @Test
         void immutableClients() {
             var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
-            try (var container = getDefaultContainer()) {
-                assertThatExceptionOfType(UnsupportedOperationException.class)
-                        .isThrownBy(() -> container.getClients().add(testClient));
-                container.start();
-                assertThatExceptionOfType(UnsupportedOperationException.class)
-                        .isThrownBy(() -> container.getClients().add(testClient));
-            }
+            assertThatExceptionOfType(UnsupportedOperationException.class)
+                    .isThrownBy(() -> containerWithClients.getClients().add(testClient));
+            containerWithClients.start();
+            assertThatExceptionOfType(UnsupportedOperationException.class)
+                    .isThrownBy(() -> containerWithClients.getClients().add(testClient));
         }
 
         @Test
         void registerClientAfterStart() throws IOException, InterruptedException, URISyntaxException {
-            try (var container = getDefaultContainer()) {
-                var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
+            var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
+            var defaultClient = container.getClient();
+            container.withClient(testClient);
 
-                container.start();
-                var defaultClient = container.getClient();
-                container.withClient(testClient);
+            var configuration = Oidc.getConfiguration(container.getIssuerUri());
+            var user = container.getUser();
 
-                var configuration = Oidc.getConfiguration(container.getIssuerUri());
-                var user = container.getUser();
+            assertThat(container.getClients())
+                    .hasSize(2)
+                    .containsExactly(defaultClient, testClient);
+            assertThat(container.getClient()).isEqualTo(defaultClient);
+            assertThat(container.getClient("test-client")).isEqualTo(testClient);
 
-                assertThat(container.getClients())
-                        .hasSize(2)
-                        .containsExactly(defaultClient, testClient);
-                assertThat(container.getClient()).isEqualTo(defaultClient);
-                assertThat(container.getClient("test-client")).isEqualTo(testClient);
-
-                var responseTest = Oidc.obtainToken(configuration, testClient, user);
-                assertThat(responseTest.idTokenClaims().get("aud")).isEqualTo("test-client");
-                assertThat(responseTest.accessTokenClaims().get("aud")).isEqualTo("test-client");
-            }
+            var responseTest = Oidc.obtainToken(configuration, testClient, user);
+            assertThat(responseTest.idTokenClaims().get("aud")).isEqualTo("test-client");
+            assertThat(responseTest.accessTokenClaims().get("aud")).isEqualTo("test-client");
         }
 
         @Test
         void removeClient() throws IOException, InterruptedException {
-            var testClient = new DexContainer.Client("test-client", "test-secret", "https://example.com/authorized");
-            try (var container = getDefaultContainer()) {
-                container.start();
-                var defaultClient = container.getClient();
-                container.withClient(testClient);
-                var configuration = Oidc.getConfiguration(container.getIssuerUri());
-                var user = container.getUser();
+            var configuration = Oidc.getConfiguration(containerWithClients.getIssuerUri());
+            var user = containerWithClients.getUser();
 
-                var removed = container.removeClient(testClient.clientId());
+            var removed = containerWithClients.removeClient(firstClient.clientId());
 
-                assertThat(removed).isEqualTo(testClient);
-                assertThat(container.getClients())
-                        .hasSize(1)
-                        .containsExactly(defaultClient);
-                assertThatExceptionOfType(Oidc.OidcException.class)
-                        .isThrownBy(() -> Oidc.obtainToken(configuration, testClient, user));
-                assertThatNoException()
-                        .isThrownBy(() -> Oidc.obtainToken(configuration, defaultClient, user));
-            }
+            assertThat(removed).isEqualTo(firstClient);
+            assertThat(containerWithClients.getClients())
+                    .hasSize(1)
+                    .containsExactly(secondClient);
+            assertThatExceptionOfType(Oidc.OidcException.class)
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, firstClient, user));
+            assertThatNoException()
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, secondClient, user));
         }
 
         @Test
         void removeDefaultClient() throws IOException, InterruptedException, URISyntaxException {
-            try (var container = getDefaultContainer()) {
-                container.start();
-                var defaultClient = container.getClient();
+            var defaultClient = container.getClient();
 
-                var configuration = Oidc.getConfiguration(container.getIssuerUri());
-                var user = container.getUser();
+            var configuration = Oidc.getConfiguration(container.getIssuerUri());
+            var user = container.getUser();
 
-                var responseDefault = Oidc.obtainToken(configuration, defaultClient, user);
-                assertThat(responseDefault.idTokenClaims().get("aud")).isEqualTo(defaultClient.clientId());
+            var responseDefault = Oidc.obtainToken(configuration, defaultClient, user);
+            assertThat(responseDefault.idTokenClaims().get("aud")).isEqualTo(defaultClient.clientId());
 
-                var removed = container.removeClient(defaultClient.clientId());
-                assertThat(removed).isEqualTo(defaultClient);
-                assertThatExceptionOfType(Oidc.OidcException.class)
-                        .isThrownBy(() -> Oidc.obtainToken(configuration, defaultClient, user));
-            }
+            var removed = container.removeClient(defaultClient.clientId());
+            assertThat(removed).isEqualTo(defaultClient);
+            assertThatExceptionOfType(Oidc.OidcException.class)
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, defaultClient, user));
         }
 
         @Test
@@ -196,12 +191,15 @@ public class DexContainerTest {
         }
 
         @Test
-        void removeNonExistingClient() {
+        void removeNonExistingClientBeforeStart() {
             try (var container = getDefaultContainer()) {
                 assertThat(container.removeClient("this-client-does-not-exist")).isNull();
-                container.start();
-                assertThat(container.removeClient("this-client-does-not-exist")).isNull();
             }
+        }
+
+        @Test
+        void removeNonExistingClientAfterStart() {
+            assertThat(containerWithClients.removeClient("this-client-does-not-exist")).isNull();
         }
     }
 
@@ -264,6 +262,7 @@ public class DexContainerTest {
                         .withMessage("must start the container before accessing the users");
             }
         }
+
     }
 
     @NotNull
