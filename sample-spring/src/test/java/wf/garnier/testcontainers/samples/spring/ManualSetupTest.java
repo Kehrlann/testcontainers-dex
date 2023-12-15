@@ -22,27 +22,32 @@ class ManualSetupTest {
 
     private final WebClient webClient = new WebClient();
 
+    private static final String clientId = "client-id";
+
+    private static final String clientSecret = "client-secret";
+
+
     @Test
     void manualSetupTest() throws IOException {
         // The redirect URI is a well known Boot uri
         // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
-        var client = new DexContainer.Client("some-client", "some-secret", "http://localhost:2345/login/oauth2/code/dex");
         try (var container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))) {
-            container.withClient(client).start();
+            container.start();
             var env = new MockEnvironment()
-                    // The port must match what's in the redirect URI
-                    .withProperty("server.port=", "2345")
-                    .withProperty("spring.security.oauth2.client.registration.dex.client-id", container.getClient().clientId())
-                    .withProperty("spring.security.oauth2.client.registration.dex.client-secret", container.getClient().clientSecret())
-                    .withProperty("spring.security.oauth2.client.registration.dex.redirect-uri", container.getClient().redirectUri())
+                    .withProperty("spring.security.oauth2.client.registration.dex.client-id", clientId)
+                    .withProperty("spring.security.oauth2.client.registration.dex.client-secret", clientSecret)
                     .withProperty("spring.security.oauth2.client.registration.dex.scope", "openid,email,profile")
                     .withProperty("spring.security.oauth2.client.provider.dex.issuer-uri", container.getIssuerUri());
             var appBuilder = new SpringApplicationBuilder(SampleSpringApplication.class)
                     .environment(env);
 
             try (var app = appBuilder.run()) {
+                var localServerPort = Integer.parseInt(app.getEnvironment().getProperty("local.server.port"));
+                var client = new DexContainer.Client(clientId, clientSecret, "http://localhost:%s/login/oauth2/code/dex".formatted(localServerPort));
+                container.withClient(client);
+
                 webClient.getOptions().setRedirectEnabled(true);
-                HtmlPage dexLoginPage = webClient.getPage("http://localhost:2345/");
+                HtmlPage dexLoginPage = webClient.getPage("http://localhost:%s/".formatted(localServerPort));
                 dexLoginPage.<HtmlInput>getElementByName("login").type(container.getUser().email());
                 dexLoginPage.<HtmlInput>getElementByName("password").type(container.getUser().clearTextPassword());
 
