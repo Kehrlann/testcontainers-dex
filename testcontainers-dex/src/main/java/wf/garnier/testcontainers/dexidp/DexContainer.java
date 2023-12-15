@@ -10,11 +10,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.validation.constraints.NotBlank;
@@ -56,9 +56,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     private final Map<String, Client> clients = new LinkedHashMap<>();
 
-    private List<User> users = new ArrayList<>();
-
-    private boolean isConfigured = false;
+    private Map<String, User> users = new LinkedHashMap<>();
 
     private boolean isStarted = false;
 
@@ -142,6 +140,12 @@ public class DexContainer extends GenericContainer<DexContainer> {
             clients.put(defaultClient.clientId(), defaultClient);
         }
         clients.values().forEach(this::registerClient);
+
+        if (users.isEmpty()) {
+            var defaultUser = new User("admin", "admin@example.com", "password");
+            users.put(defaultUser.email(), defaultUser);
+        }
+        users.values().forEach(this::registerUser);
     }
 
     /**
@@ -158,15 +162,6 @@ public class DexContainer extends GenericContainer<DexContainer> {
         channel = null;
     }
 
-    @Override
-    protected void configure() {
-        this.isConfigured = true;
-        if (users.isEmpty()) {
-            users = Collections.singletonList(new User("admin", "admin@example.com", "password"));
-        } else {
-            users = Collections.unmodifiableList(users);
-        }
-    }
 
     /**
      * Return the OpenID Connect Provider's {@code issuer identifier}. It will match whatever is in
@@ -222,25 +217,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
                 oauth2:
                     skipApprovalScreen: true
                 """.formatted(templateIssuerUri(), DEX_HTTP_PORT, DEX_GRPC_PORT);
-        return baseConfiguration + getUserConfiguration();
-    }
-
-    private String getUserConfiguration() {
-        var users = getUsers().stream()
-                .map(u -> """
-                        - username: %s
-                          email: %s
-                          userID: %s
-                          hash: %s
-                        """.formatted(u.username(), u.email(), u.uuid(), u.bcryptPassword())
-                )
-                .collect(Collectors.joining())
-                .indent(2);
-        return """
-                staticPasswords:
-                %s
-                """
-                .formatted(users);
+        return baseConfiguration;
     }
 
     /**
@@ -336,51 +313,91 @@ public class DexContainer extends GenericContainer<DexContainer> {
     /**
      * Add a User that can log in with the OpenID Provider.
      * <p>
-     * This MUST NOT be called after the container is started.
-     * <p>
-     * This is optional. When not called, a default user is provided.
      *
      * @param user the user
      * @return this instance for further customization
-     * @throws IllegalStateException when called after the container is started
      * @see #getUsers()
      */
     public DexContainer withUser(User user) {
-        if (isConfigured) {
-            throw new IllegalStateException("users cannot be added after the container is started");
+        if (isStarted) {
+            registerUser(user);
         }
-        users.add(user);
+        users.put(user.email(), user);
         return self();
     }
 
     /**
      * Return a User that can log in with the OpenID provider. When multiple users are defined,
      * returns the first one. When no user is defined, returns a default user.
-     * <p>
-     * This method MUST NOT be called before the container is started.
      *
      * @return the user
-     * @throws IllegalStateException when called before the container is started
      */
     public User getUser() {
         return getUsers().get(0);
     }
 
+    /**
+     * Return a User that can log in with the OpenID provider, by {@code email}.
+     *
+     * @param email the email on
+     * @return the user
+     */
+    public User getUser(String email) {
+        return users.get(email);
+    }
 
     /**
      * Return the list of Users that can log in with the OpenID provider. When no user is defined,
      * returns a default user.
-     * <p>
-     * This method MUST NOT be called before the container is started.
      *
      * @return the users
-     * @throws IllegalStateException when called before the container is started
      */
     public List<User> getUsers() {
-        if (!isConfigured) {
-            throw new IllegalStateException("must start the container before accessing the users");
+        var users = new ArrayList<>(this.users.values());
+        return Collections.unmodifiableList(users);
+    }
+
+
+    /**
+     * Remove an User from the identity provider, by {@code email}.
+     *
+     * @param email - the email of the user to remove
+     * @return the removed user, or {@code null} if there was no user registered under this email.
+     */
+    public User removeUser(String email) {
+        if (isStarted) {
+            unregisterUser(email);
         }
-        return users;
+        return users.remove(email);
+    }
+
+    /**
+     * Register the user with the running Dex IDP. The container must be started for this work.
+     *
+     * @param user the user to register
+     */
+    private void registerUser(User user) {
+        var password = DexGrpcApi.Password.newBuilder()
+                .setEmail(user.email())
+                .setUserId(user.uuid())
+                .setHash(ByteString.copyFromUtf8(user.bcryptPassword()))
+                .setUsername(user.username());
+        var request = DexGrpcApi.CreatePasswordReq.newBuilder()
+                .setPassword(password)
+                .build();
+        grpcStub.createPassword(request);
+    }
+
+    /**
+     * Unregister the user with the running Dex IDP. The container must be started for this work.
+     *
+     * @param email the email of the user to unregister
+     */
+    private void unregisterUser(String email) {
+        var request = DexGrpcApi.DeletePasswordReq.newBuilder()
+                .setEmail(email)
+                .build();
+        grpcStub.deletePassword(request);
     }
 
     /**
