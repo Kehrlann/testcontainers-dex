@@ -42,6 +42,10 @@ java {
     withSourcesJar()
 }
 
+tasks.javadoc {
+    excludes.add("wf/garnier/testcontainers/dexidp/grpc/**")
+}
+
 tasks.test {
     useJUnitPlatform()
 }
