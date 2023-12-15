@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "wf.garnier"
-version = "3.0.0-SNAPSHOT"
+version = "3.0.1-SNAPSHOT"
 
 val grpcVersion = "1.60.0"
 val protobufVersion = "3.25.0"
