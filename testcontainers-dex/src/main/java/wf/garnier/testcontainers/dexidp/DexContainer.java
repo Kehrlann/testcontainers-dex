@@ -250,6 +250,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
     /**
      * Get an OAuth2 Client to interact with the OpenID Provider, by {@code client_id}.
      *
+     * @param clientId the {@code client_id} of the Client
      * @return the Client
      */
     public Client getClient(String clientId) {
@@ -312,7 +313,6 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     /**
      * Add a User that can log in with the OpenID Provider.
-     * <p>
      *
      * @param user the user
      * @return this instance for further customization
