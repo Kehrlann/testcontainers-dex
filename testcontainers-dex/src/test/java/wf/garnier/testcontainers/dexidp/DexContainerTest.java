@@ -7,7 +7,6 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -293,6 +292,27 @@ public class DexContainerTest {
                         .containsEntry("name", "test-user")
                         .containsEntry("email", "test@example.com");
             }
+        }
+
+        @Test
+        @DisplayName("Registering an user with the same email updates the existing user")
+        void registerUserWithSameEmail() throws IOException, InterruptedException {
+            var updatedAlice = new DexContainer.User(
+                    alice.username(),
+                    alice.email(),
+                    "new-password"
+            );
+            preconfiguredContainer.withUser(updatedAlice);
+            var client = preconfiguredContainer.getClient();
+            var configuration = Oidc.getConfiguration(preconfiguredContainer.getIssuerUri());
+
+            assertThat(preconfiguredContainer.getUsers())
+                    .hasSize(2)
+                    .containsExactly(updatedAlice, bob);
+            assertThatNoException()
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, client, updatedAlice));
+            assertThatExceptionOfType(Oidc.OidcException.class)
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, client, alice));
         }
 
         @Test

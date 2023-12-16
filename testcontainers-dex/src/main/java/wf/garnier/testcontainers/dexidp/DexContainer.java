@@ -325,6 +325,11 @@ public class DexContainer extends GenericContainer<DexContainer> {
      */
     public DexContainer withUser(User user) {
         if (isStarted) {
+            // Un-register the user: if it does not exist, it's a no-op.
+            // If the user exists, then this is roughly equivalent to "updating"
+            // the user. Some internal state _may_ be different, but that is
+            // not relevant to our use-case.
+            unregisterUser(user.email());
             registerUser(user);
         }
         users.put(user.email(), user);
