@@ -7,6 +7,8 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import wf.garnier.testcontainers.dexidp.utils.Oidc;
@@ -166,6 +168,27 @@ public class DexContainerTest {
                 assertThat(responseTest.idTokenClaims().get("aud")).isEqualTo("test-client");
                 assertThat(responseTest.accessTokenClaims().get("aud")).isEqualTo("test-client");
             }
+        }
+
+        @Test
+        @DisplayName("Registering a client with the same ID updates the existing client")
+        void registerClientWithSameId() throws IOException, InterruptedException {
+            var updatedClient = new DexContainer.Client(
+                    firstClient.clientId(),
+                    "new-secret",
+                    firstClient.redirectUri()
+            );
+            preconfiguredContainer.withClient(updatedClient);
+            var user = preconfiguredContainer.getUser();
+            var configuration = Oidc.getConfiguration(preconfiguredContainer.getIssuerUri());
+
+            assertThat(preconfiguredContainer.getClients())
+                    .hasSize(2)
+                    .containsExactly(updatedClient, secondClient);
+            assertThatNoException()
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, updatedClient, user));
+            assertThatExceptionOfType(Oidc.OidcException.class)
+                    .isThrownBy(() -> Oidc.obtainToken(configuration, firstClient, user));
         }
 
         @Test

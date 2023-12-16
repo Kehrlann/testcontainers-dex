@@ -231,6 +231,11 @@ public class DexContainer extends GenericContainer<DexContainer> {
      */
     public DexContainer withClient(Client client) {
         if (isStarted) {
+            // Un-register the client: if it does not exist, it's a no-op.
+            // If the client exists, then this is roughly equivalent to "updating"
+            // the client. Some internal state _may_ be different, but that is
+            // not relevant to our use-case.
+            unregisterClient(client.clientId());
             registerClient(client);
         }
         clients.put(client.clientId(), client);

@@ -106,7 +106,11 @@ public class Oidc {
                 .send(tokenRequest, HttpResponse.BodyHandlers.ofString())
                 .body();
 
-        return objectMapper.readValue(tokenResponse, TokenResponse.class);
+        var parsedResponse = objectMapper.readValue(tokenResponse, TokenResponse.class);
+        if (parsedResponse.error() != null) {
+            throw new OidcException("Token request errored. Details: %s".formatted(tokenResponse));
+        }
+        return parsedResponse;
     }
 
     @SuppressWarnings("unchecked")
@@ -128,7 +132,7 @@ public class Oidc {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     @JsonIgnoreProperties(ignoreUnknown = true)
     public
-    record TokenResponse(String idToken, String accessToken, String scope) {
+    record TokenResponse(String idToken, String accessToken, String scope, String error) {
         public Map<String, Object> idTokenClaims() {
             return parseJwt(idToken);
         }
