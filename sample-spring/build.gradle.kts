@@ -24,7 +24,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("net.sourceforge.htmlunit:htmlunit")
-    testImplementation("wf.garnier:testcontainers-dex:3.0.0")
+    testImplementation("wf.garnier:testcontainers-dex:3.0.1")
 }
 
 tasks.test {
