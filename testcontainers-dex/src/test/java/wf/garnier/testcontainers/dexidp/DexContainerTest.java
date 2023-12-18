@@ -35,9 +35,7 @@ public class DexContainerTest {
 
     @BeforeAll
     static void beforeAll() {
-        preconfiguredContainer = getDefaultContainer()
-                .withUser(alice)
-                .withUser(bob);
+        preconfiguredContainer = getDefaultContainer();
         preconfiguredContainer.start();
 
         defaultContainer = getDefaultContainer();
@@ -54,6 +52,13 @@ public class DexContainerTest {
         preconfiguredContainer
                 .withClient(firstClient)
                 .withClient(secondClient);
+        preconfiguredContainer.getUsers()
+                .stream()
+                .map(DexContainer.User::email)
+                .forEach(preconfiguredContainer::removeUser);
+        preconfiguredContainer
+                .withUser(alice)
+                .withUser(bob);
     }
 
     @AfterAll
