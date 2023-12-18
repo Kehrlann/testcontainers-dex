@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.service.connection.ConnectionDetailsFactory=\
+  wf.garnier.testcontainers.dexidp.autoconfigure.DexConnectionDetailsFactory
