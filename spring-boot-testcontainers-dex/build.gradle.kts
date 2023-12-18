@@ -1,3 +1,5 @@
+import org.jreleaser.model.Active
+
 plugins {
     id("java-library")
     id("maven-publish")
@@ -6,19 +8,18 @@ plugins {
 }
 
 group = "wf.garnier"
-version = "3.0.2-SNAPSHOT"
-val testcontainersDexVersion = "3.0.1"
-
+version = rootProject.extra.get("projectVersion") as String
+val bootVersion = "3.2.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    api("wf.garnier:testcontainers-dex:${testcontainersDexVersion}")
-    implementation("org.springframework.boot:spring-boot-autoconfigure:3.2.0")
-    implementation("org.springframework.boot:spring-boot-testcontainers:3.2.0")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-client:3.2.0")
+    api(project(":testcontainers-dex"))
+    implementation("org.springframework.boot:spring-boot-autoconfigure:${bootVersion}")
+    implementation("org.springframework.boot:spring-boot-testcontainers:${bootVersion}")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client:${bootVersion}")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -66,6 +67,34 @@ publishing {
     repositories {
         maven {
             url = uri(layout.buildDirectory.dir("staging-deploy"))
+        }
+    }
+}
+
+jreleaser {
+    gitRootSearch.set(true)
+    signing {
+        active = Active.ALWAYS
+        armored = true
+    }
+    deploy {
+        maven {
+            nexus2 {
+                create("maven-central") {
+                    active.set(Active.ALWAYS)
+                    url = "https://s01.oss.sonatype.org/service/local"
+                    snapshotUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                    closeRepository = true
+                    releaseRepository = true
+                    stagingRepository("build/staging-deploy")
+                }
+            }
+        }
+    }
+    release {
+        github {
+            repoOwner = "Kehrlann"
+            overwrite = true
         }
     }
 }

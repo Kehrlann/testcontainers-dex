@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "wf.garnier"
-version = "3.0.2-SNAPSHOT"
+version = rootProject.extra.get("projectVersion") as String
 
 val grpcVersion = "1.60.0"
 val protobufVersion = "3.25.0"
