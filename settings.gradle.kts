@@ -1,2 +1,2 @@
-rootProject.name = "testcontainers-dex"
-include("testcontainers-dex", "sample-spring", "spring-boot-testcontainers-dex")
+rootProject.name = "testcontainers-dex-root"
+include("testcontainers-dex", "spring-boot-testcontainers-dex", "sample-spring")
