@@ -16,6 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
+/**
+ * @author Daniel Garnier-Moiroux
+ */
 public class DexContainerTest {
     static DexContainer defaultContainer;
 

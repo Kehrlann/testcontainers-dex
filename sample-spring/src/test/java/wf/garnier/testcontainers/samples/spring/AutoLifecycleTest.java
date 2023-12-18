@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * This test showcases how to run a {@link SpringBootTest} with Testcontainers, using only annotations.
  * Notice that the port needs to be hardcoded for now, see README.md for more detail.
  *
+ * @author Daniel Garnier-Moiroux
  * @see <a href="https://spring.io/blog/2023/06/23/improved-testcontainers-support-in-spring-boot-3-1"></a>
  */
 @Testcontainers

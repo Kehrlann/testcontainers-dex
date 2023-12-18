@@ -34,6 +34,7 @@ import wf.garnier.testcontainers.dexidp.grpc.DexGrpcApi;
  * Clients and users should not be added after the container is started.
  * There is a check in place, but it's not thread-safe.
  *
+ * @author Daniel Garnier-Moiroux
  * @see <a href="https://dexidp.io">DexIDP.io</a>
  */
 public class DexContainer extends GenericContainer<DexContainer> {
@@ -56,7 +57,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     private final Map<String, Client> clients = new LinkedHashMap<>();
 
-    private Map<String, User> users = new LinkedHashMap<>();
+    private final Map<String, User> users = new LinkedHashMap<>();
 
     private boolean isStarted = false;
 
@@ -412,6 +413,8 @@ public class DexContainer extends GenericContainer<DexContainer> {
 
     /**
      * Represents an OAuth 2 / OpenID Connect Client.
+     *
+     * @author Daniel Garnier-Moiroux
      */
     public record Client(
             @NotNull @NotBlank String clientId,
@@ -438,6 +441,8 @@ public class DexContainer extends GenericContainer<DexContainer> {
      * Represents a "User" that may log in with an e-mail and a password. Internally, the
      * password is bcrypt-hashed. The {@link #username()} is used for the {@code name} claim
      * in Dex-issued {@code id_token}s.
+     *
+     * @author Daniel Garnier-Moiroux
      */
     public static final class User {
         private final String username;

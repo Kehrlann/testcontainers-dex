@@ -17,6 +17,9 @@ import org.apache.hc.core5.net.URIBuilder;
 import wf.garnier.testcontainers.dexidp.DexContainer;
 
 
+/**
+ * @author Daniel Garnier-Moiroux
+ */
 public class Oidc {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();

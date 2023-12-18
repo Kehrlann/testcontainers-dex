@@ -3,6 +3,9 @@ package wf.garnier.testcontainers.samples.spring;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * @author Daniel Garnier-Moiroux
+ */
 @SpringBootApplication
 public class SampleSpringApplication {
 

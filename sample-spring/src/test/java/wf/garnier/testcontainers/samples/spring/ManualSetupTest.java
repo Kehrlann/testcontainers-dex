@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * This test showcases how to run a Spring Boot app for testing, without using annotations,
  * and manually managing the lifecycle of both the TestContainer and the Boot app.
  * Notice that the port needs to be hardcoded for now, see README.md for more detail.
+ *
+ * @author Daniel Garnier-Moiroux
  */
 class ManualSetupTest {
 
