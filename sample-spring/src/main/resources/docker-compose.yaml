@@ -9,7 +9,6 @@ services:
         target: /opt/config/dex.yml
     ports:
       - 5556:5556
-      - 5557:5557
     command:
       - serve
       - /opt/config/dex.yml
@@ -29,8 +28,6 @@ configs:
           file: /opt/dex.db
       web:
         http: 0.0.0.0:5556
-      grpc:
-        addr: 0.0.0.0:5557
       staticClients:
         - id: base-client
           redirectURIs:
