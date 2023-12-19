@@ -31,8 +31,6 @@ class ManualSetupTest {
 
     @Test
     void manualSetupTest() throws IOException {
-        // The redirect URI is a well known Boot uri
-        // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
         try (var container = new DexContainer(DexContainer.DEFAULT_IMAGE_NAME.withTag(DexContainer.DEFAULT_TAG))) {
             container.start();
             var env = new MockEnvironment()
@@ -44,6 +42,9 @@ class ManualSetupTest {
                     .environment(env);
 
             try (var app = appBuilder.run()) {
+                // Register the client once the Spring Boot app has started and we know its port. The redirect URI is a
+                // well known Boot URI.
+                // See: https://docs.spring.io/spring-security/reference/servlet/oauth2/login/core.html#oauth2login-sample-redirect-uri
                 var localServerPort = Integer.parseInt(app.getEnvironment().getProperty("local.server.port"));
                 var client = new DexContainer.Client(clientId, clientSecret, "http://localhost:%s/login/oauth2/code/dex".formatted(localServerPort));
                 container.withClient(client);
