@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    api("org.testcontainers:testcontainers:1.19.3")
+    api("org.testcontainers:testcontainers:1.21.4")
     implementation("jakarta.validation:jakarta.validation-api:3.0.2")
     implementation("io.grpc:grpc-netty-shaded:${grpcVersion}")
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")
@@ -25,6 +25,7 @@ dependencies {
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core:3.24.2")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
