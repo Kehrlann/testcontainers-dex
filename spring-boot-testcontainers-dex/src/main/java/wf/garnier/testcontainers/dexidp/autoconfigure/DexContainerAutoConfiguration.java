@@ -4,8 +4,8 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration;
-import org.springframework.boot.web.context.WebServerInitializedEvent;
+import org.springframework.boot.security.oauth2.client.autoconfigure.OAuth2ClientAutoConfiguration;
+import org.springframework.boot.web.server.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -26,8 +26,7 @@ import wf.garnier.testcontainers.dexidp.DexContainer;
  * tend to provide a random port for their server, we start Dex, point Spring Boot at it, and
  * then add Spring Boot to Dex as a client.
  */
-@AutoConfiguration
-@AutoConfigureBefore(OAuth2ClientAutoConfiguration.class)
+@AutoConfiguration(before = OAuth2ClientAutoConfiguration.class)
 class DexContainerAutoConfiguration {
 
     @Bean

@@ -1,7 +1,7 @@
 # Samples, with Spring Boot
 
 This samples shows you how to use `testcontainers-dex` with Spring Boot. It requires
-the `wf.garnier:spring-boot-testcontainers-dex:3.2.0` dependency.
+the `wf.garnier:spring-boot-testcontainers-dex:4.0.0` dependency.
 
 ## Running the app
 

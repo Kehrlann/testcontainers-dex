@@ -1,14 +1,14 @@
 plugins {
     id("java-library")
     id("maven-publish")
-    id("com.google.protobuf") version "0.9.4"
+    id("com.google.protobuf") version "0.9.6"
 }
 
 group = "wf.garnier"
 version = rootProject.version
 
-val grpcVersion = "1.60.0"
-val protobufVersion = "3.25.0"
+val grpcVersion = "1.79.0"
+val protobufVersion = "3.25.8"
 val protocVersion = protobufVersion
 
 repositories {
@@ -16,22 +16,22 @@ repositories {
 }
 
 dependencies {
-    api("org.testcontainers:testcontainers:1.21.4")
-    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
+    api("org.testcontainers:testcontainers:2.0.3")
+    implementation("jakarta.validation:jakarta.validation-api:3.1.1")
     implementation("io.grpc:grpc-netty-shaded:${grpcVersion}")
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")
     implementation("io.grpc:grpc-services:${grpcVersion}")
     implementation("io.grpc:grpc-stub:${grpcVersion}")
     compileOnly("org.apache.tomcat:annotations-api:6.0.53")
 
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation(platform("org.junit:junit-bom:6.0.3"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.assertj:assertj-core:3.24.2")
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.3")
-    testImplementation("org.apache.httpcomponents.core5:httpcore5:5.2.1")
-    testImplementation("ch.qos.logback:logback-core:1.4.11")
-    testImplementation("ch.qos.logback:logback-classic:1.4.11")
+    testImplementation("org.assertj:assertj-core:3.27.7")
+    testImplementation("tools.jackson.core:jackson-databind:3.1.0")
+    testImplementation("org.apache.httpcomponents.core5:httpcore5:5.4.1")
+    testImplementation("ch.qos.logback:logback-core:1.5.32")
+    testImplementation("ch.qos.logback:logback-classic:1.5.32")
 }
 
 java {
@@ -60,14 +60,10 @@ protobuf {
 
     tasks.generateProto {
         builtins {
-            named("java") {
-                option("lite")
-            }
+            named("java") {}
         }
         plugins {
-            create("grpc") {
-                option("lite")
-            }
+            create("grpc") {}
         }
     }
 }

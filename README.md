@@ -9,6 +9,8 @@ than the venerable Keycloak, but can be good enough to have a real "openid login
 Dex is designed for federating login from upstream identity providers, but those
 features are not used here.
 
+> ⚠️ Versions 4.x of `testcontainers-dex` only work Spring Boot 4.x . For Spring Boot 3.x, use version `3.2.0`.
+
 ## Download
 
 Maven:
@@ -25,7 +27,7 @@ Maven:
     <dependency>
         <groupId>wf.garnier</groupId>
         <artifactId>testcontainers-dex</artifactId>
-        <version>3.2.0</version>
+        <version>4.0.0</version>
         <scope>test</scope>
     </dependency>
 </dependencies>
@@ -35,7 +37,7 @@ Gradle:
 
 ```gradle
 testImplementation("org.testcontainers:testcontainers:1.19.3")
-testImplementation("wf.garnier:testcontainers-dex:3.2.0")
+testImplementation("wf.garnier:testcontainers-dex:4.0.0")
 ```
 
 ## Usage
@@ -69,7 +71,7 @@ class MyTests {
 ## Usage with Spring Boot
 
 Check out the `sample-spring` directory in this project. In that case you want to pull in
-the `wf.garnier:spring-boot-testcontainers-dex:3.2.0` dependency, rather than just the Dex module. This will allow you
+the `wf.garnier:spring-boot-testcontainers-dex:4.0.0` dependency, rather than just the Dex module. This will allow you
 to autoconfigure your application when running tests, and use the `@ServiceConnection` annotation.
 
 Maven:
@@ -86,7 +88,7 @@ Maven:
     <dependency>
         <groupId>wf.garnier</groupId>
         <artifactId>spring-boot-testcontainers-dex</artifactId>
-        <version>3.2.0</version>
+        <version>4.0.0</version>
         <scope>test</scope>
     </dependency>
 </dependencies>
@@ -95,8 +97,8 @@ Maven:
 Gradle:
 
 ```gradle
-testImplementation("org.testcontainers:testcontainers:1.19.3")
-testImplementation("wf.garnier:spring-boot-testcontainers-dex:3.2.0")
+testImplementation("org.testcontainers:testcontainers:2.0.3")
+testImplementation("wf.garnier:spring-boot-testcontainers-dex:4.0.0")
 ```
 
 Using with Spring Boot:

@@ -5,7 +5,7 @@ plugins {
 
 group = "wf.garnier"
 version = rootProject.version
-val bootVersion = "3.2.0"
+val bootVersion = "4.0.3"
 
 repositories {
     mavenCentral()
@@ -13,11 +13,11 @@ repositories {
 
 dependencies {
     api(project(":testcontainers-dex"))
-    implementation("org.springframework.boot:spring-boot-autoconfigure:${bootVersion}")
+    implementation("org.springframework.boot:spring-boot-web-server:${bootVersion}")
     implementation("org.springframework.boot:spring-boot-testcontainers:${bootVersion}")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-client:${bootVersion}")
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client:${bootVersion}")
 
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation(platform("org.junit:junit-bom:6.0.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
 

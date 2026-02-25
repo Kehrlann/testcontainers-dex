@@ -41,7 +41,7 @@ public class DexConnectionDetailsFactory extends ContainerConnectionDetailsFacto
 
         @Override
         public void registerClient(int port) {
-            var redirectUri = UriComponentsBuilder.fromHttpUrl("http://localhost")
+            var redirectUri = UriComponentsBuilder.fromUriString("http://localhost")
                     .port(port)
                     .path("/login/oauth2/code/" + getRegistrationName())
                     .toUriString();

@@ -10,9 +10,9 @@ import java.util.Base64;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 import org.apache.hc.core5.net.URIBuilder;
 import wf.garnier.testcontainers.dexidp.DexContainer;
 
@@ -120,11 +120,7 @@ public class Oidc {
     private static Map<String, Object> parseJwt(String jwt) {
         var parts = jwt.split("\\.");
         var decodedBody = Base64.getUrlDecoder().decode(parts[1]);
-        try {
-            return (Map<String, Object>) objectMapper.readValue(decodedBody, Map.class);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return (Map<String, Object>) objectMapper.readValue(decodedBody, Map.class);
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

@@ -1,11 +1,11 @@
 import org.jreleaser.model.Active
 
 plugins {
-    id("org.jreleaser") version "1.9.0"
+    id("org.jreleaser") version "1.20.0"
 }
 
 group = "wf.garnier"
-version = "3.2.0"
+version = "4.0.0"
 
 // Required for jreleaser, see:
 // https://github.com/jreleaser/jreleaser/issues/1492
