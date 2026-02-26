@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "wf.garnier"
-version = "4.0.0"
+version = "4.0.1"
 
 // Required for jreleaser, see:
 // https://github.com/jreleaser/jreleaser/issues/1492
