@@ -47,7 +47,7 @@ public class DexContainer extends GenericContainer<DexContainer> {
     /**
      * The tag that this container is tested against.
      */
-    public static final String DEFAULT_TAG = "v2.37.0";
+    public static final String DEFAULT_TAG = "v2.45.0";
 
     private static final int DEX_HTTP_PORT = 5556;
 
